@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
+import { MUTED } from '../../theme.js';
 import { Agent } from '../../../core/agent.js';
 import { useAgent } from '../../hooks/useAgent.js';
 import { useTokenMetrics } from '../../hooks/useTokenMetrics.js';
@@ -276,7 +277,7 @@ export default function Chat({ agent }: ChatProps) {
           />
         ) : (
           <Box>
-            <Text color="gray" dimColor>Processing...</Text>
+            <Text color={MUTED}>Processing...</Text>
           </Box>
         )}
       </Box>
@@ -288,7 +289,7 @@ export default function Chat({ agent }: ChatProps) {
           </Text>
         </Box>
         <Box>
-          <Text color="gray" dimColor>
+          <Text color={MUTED}>
             {agent.getCurrentModel?.() || ''}
           </Text>
         </Box>

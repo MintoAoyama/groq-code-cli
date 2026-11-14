@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { MUTED } from '../../theme.js';
 
 interface ModelSelectorProps {
   onSubmit: (model: string) => void;
@@ -57,13 +58,13 @@ export default function ModelSelector({ onSubmit, onCancel, currentModel }: Mode
       </Box>
       
       <Box marginBottom={1}>
-        <Text color="gray" dimColor>
+        <Text color={MUTED}>
           Choose a model for your conversation. The chat will be cleared when you switch models.
         </Text>
       </Box>
 
       <Box marginBottom={1}>
-        <Text color="gray" dimColor>
+        <Text color={MUTED}>
           Visit <Text underline>https://groq.com/pricing</Text> for more information.
         </Text>
       </Box>
@@ -82,7 +83,7 @@ export default function ModelSelector({ onSubmit, onCancel, currentModel }: Mode
             </Text>
             {index === selectedIndex && (
               <Box marginLeft={4} marginTop={0}>
-                <Text color="gray" dimColor>
+                <Text color={MUTED}>
                   {model.description}
                 </Text>
               </Box>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { MUTED } from '../../theme.js';
 import { getCommandNames } from '../../../commands/index.js';
 import SlashCommandSuggestions from '../input-overlays/SlashCommandSuggestions.js';
 
@@ -152,14 +153,14 @@ export default function MessageInput({
         <Text color="cyan" bold>{'>'} </Text>
         <Box flexGrow={1}>
           {isPlaceholder ? (
-            <Text color="gray">
-              <Text backgroundColor="cyan" color="white"> </Text>
+            <Text color={MUTED}>
+              <Text backgroundColor="cyan" color="black"> </Text>
               {placeholder}
             </Text>
           ) : (
-            <Text color="gray">
+            <Text color={MUTED}>
               {value.slice(0, cursorPosition)}
-              <Text backgroundColor="cyan" color="white">
+              <Text backgroundColor="cyan" color="black">
                 {cursorPosition < value.length ? value[cursorPosition] : ' '}
               </Text>
               {value.slice(cursorPosition + 1)}

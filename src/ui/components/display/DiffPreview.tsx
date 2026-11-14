@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { MUTED } from '../../theme.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { validateReadBeforeEdit, getReadBeforeEditError } from '../../../tools/validators.js';
@@ -168,13 +169,13 @@ export default function DiffPreview({ toolName, toolArgs, isHistorical = false }
       );
     } else if (line.startsWith(' ')) {
       return (
-        <Text key={index} dimColor>
+        <Text key={index} color={MUTED}>
           {'  ' + line.slice(1)}
         </Text>
       );
     } else {
       return (
-        <Text key={index} dimColor>
+        <Text key={index} color={MUTED}>
           {line}
         </Text>
       );
@@ -200,7 +201,7 @@ export default function DiffPreview({ toolName, toolArgs, isHistorical = false }
   if (diffChunks.length === 0) {
     return (
       <Box>
-        <Text dimColor>No changes to show</Text>
+        <Text color={MUTED}>No changes to show</Text>
       </Box>
     );
   }
@@ -211,7 +212,7 @@ export default function DiffPreview({ toolName, toolArgs, isHistorical = false }
       {diffChunks.map((chunk, chunkIndex) => (
         <Box key={chunkIndex} flexDirection="column" marginTop={chunkIndex > 0 ? 1 : 0}>
           {chunkIndex > 0 && (
-            <Text dimColor>...</Text>
+            <Text color={MUTED}>...</Text>
           )}
           {chunk.lines.map((line, lineIndex) => renderDiffLine(line, lineIndex))}
         </Box>

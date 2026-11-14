@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Box, Text } from 'ink';
+import { MUTED } from '../../theme.js';
 import { ChatMessage } from '../../hooks/useAgent.js';
 import ToolHistoryItem from '../display/ToolHistoryItem.js';
 import Stats from '../display/Stats.js';
@@ -48,7 +49,7 @@ export default function MessageHistory({ messages, showReasoning = true, usageDa
         return (
           <Box key={message.id} marginBottom={1}>
             <Text color="cyan" bold>{'>'} </Text>
-            <Text color="gray">{message.content}</Text>
+            <Text color={MUTED}>{message.content}</Text>
           </Box>
         );
         
@@ -59,7 +60,7 @@ export default function MessageHistory({ messages, showReasoning = true, usageDa
             {/* Render reasoning if present and showReasoning is enabled */}
             {message.reasoning && showReasoning && (
               <Box marginBottom={1}>
-                <Text italic dimColor>
+                <Text italic color={MUTED}>
                   {message.reasoning}
                 </Text>
               </Box>
@@ -139,7 +140,7 @@ export default function MessageHistory({ messages, showReasoning = true, usageDa
       default:
         return (
           <Box key={message.id} marginBottom={1}>
-            <Text color="gray" dimColor>
+            <Text color={MUTED}>
               Unknown: {message.content}
             </Text>
           </Box>
@@ -151,10 +152,10 @@ export default function MessageHistory({ messages, showReasoning = true, usageDa
     <Box ref={scrollRef} flexDirection="column" flexGrow={1}>
       {messages.length === 0 ? (
         <Box justifyContent="center" paddingY={2} flexDirection="column" alignItems="center">
-          <Text color="gray" dimColor italic>
+          <Text color={MUTED} italic>
             Ask for help with coding tasks, debugging issues, or explaining code.
           </Text>
-          <Text color="gray" dimColor italic>
+          <Text color={MUTED} italic>
             Type /help for available commands and features.
           </Text>
         </Box>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { MUTED } from '../../theme.js';
 import DiffPreview from '../display/DiffPreview.js';
 import { formatToolParams } from '../../../tools/tools.js';
 import { DANGEROUS_TOOLS } from '../../../tools/tool-schemas.js';
@@ -70,7 +71,7 @@ export default function PendingToolApproval({
         const keyParams = formatToolParams(toolName, toolArgs, { includePrefix: false, separator: ': ' });
         return keyParams ? (
           <Box>
-            <Text color="gray" dimColor>
+            <Text color={MUTED}>
               {keyParams}
             </Text>
           </Box>
