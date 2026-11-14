@@ -151,7 +151,7 @@ export default function MessageHistory({ messages, showReasoning = true, usageDa
   return (
     <Box ref={scrollRef} flexDirection="column" flexGrow={1}>
       {messages.length === 0 ? (
-        <Box justifyContent="center" paddingY={2} flexDirection="column" alignItems="center">
+        <Box justifyContent="center" paddingY={1} flexDirection="column" alignItems="center">
           <Text color={MUTED} italic>
             Ask for help with coding tasks, debugging issues, or explaining code.
           </Text>

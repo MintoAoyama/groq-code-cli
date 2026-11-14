@@ -6,6 +6,8 @@ import React from 'react';
 import { Agent } from './agent.js';
 import App from '../ui/App.js';
 import { getVersion } from '../utils/version.js';
+import { shortenHome } from '../utils/status.js';
+import { renderBanner } from '../ui/banner.js';
 
 const program = new Command();
 
@@ -27,26 +29,6 @@ async function startChat(
   debug?: boolean,
   proxy?: string
 ): Promise<void> {
-  console.log(chalk.hex('#FF4500')(`                             
-  ██████    ██████   ██████   ██████
- ███░░███░░███░░░██ ███░░███ ███░░███ 
-░███ ░███ ░███ ░░░ ░███ ░███░███ ░███ 
-░███ ░███ ░███     ░███ ░███░███ ░███ 
-░░███░███ ░███     ░░██████ ░░███░███ 
- ░░░░░███ ░░░░      ░░░░░░   ░░░░░███ 
- ██  ░███                        ░███ 
-░░██████                         ░███
- ░░░░░░                          ░░░ 
-                        ███          
-                      ░░███           
-  ██████   ██████   ███████   ██████  
- ███░░███ ███░░███ ███░░███  ███░░███ 
-░███ ░░░ ░███ ░███░███ ░███ ░███████  
-░███  ███░███ ░███░███ ░███ ░███░░░   
-░░██████ ░░██████ ░░███████ ░░██████  
- ░░░░░░   ░░░░░░   ░░░░░░░░  ░░░░░░   
-`));
-    
   let defaultModel = 'moonshotai/kimi-k2-instruct';
   
   // Validate proxy URL if provided
@@ -65,6 +47,11 @@ async function startChat(
     // Create agent (API key will be checked on first message)
     const agent = await Agent.create(defaultModel, temperature, system, debug, proxy);
 
+    console.log(renderBanner({
+      version: getVersion(),
+      model: agent.getCurrentModel(),
+      cwd: shortenHome(process.cwd()),
+    }));
     render(React.createElement(App, { agent }));
   } catch (error) {
     console.log(chalk.red(`Error initializing agent: ${error}`));

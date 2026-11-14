@@ -5,6 +5,7 @@ import { validateReadBeforeEdit, getReadBeforeEditError } from '../tools/validat
 import { ALL_TOOL_SCHEMAS, DANGEROUS_TOOLS, APPROVAL_REQUIRED_TOOLS } from '../tools/tool-schemas.js';
 import { ConfigManager } from '../utils/local-settings.js';
 import { getProxyAgent, getProxyInfo } from '../utils/proxy-config.js';
+import { parseRateLimit, type RateLimit } from '../utils/status.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -36,6 +37,7 @@ export class Agent {
   private requestCount: number = 0;
   private currentAbortController: AbortController | null = null;
   private isInterrupted: boolean = false;
+  private rateLimit?: RateLimit;
 
   private constructor(
     model: string,
@@ -237,6 +239,10 @@ When asked about your identity, you should identify yourself as a coding assista
     return this.model;
   }
 
+  public getRateLimit(): RateLimit | undefined {
+    return this.rateLimit;
+  }
+
   public setSessionAutoApprove(enabled: boolean): void {
     this.sessionAutoApprove = enabled;
   }
@@ -330,7 +336,7 @@ When asked about your identity, you should identify yourself as a coding assista
           // Create AbortController for this request
           this.currentAbortController = new AbortController();
           
-          const response = await this.client.chat.completions.create({
+          const { data: response, response: rawResponse } = await this.client.chat.completions.create({
             model: this.model,
             messages: this.messages as any,
             tools: ALL_TOOL_SCHEMAS,
@@ -340,7 +346,8 @@ When asked about your identity, you should identify yourself as a coding assista
             stream: false
           }, {
             signal: this.currentAbortController.signal
-          });
+          }).withResponse();
+          this.rateLimit = parseRateLimit(rawResponse.headers) ?? this.rateLimit;
 
           debugLog('Full API response received:', response);
           debugLog('Response usage:', response.usage);
