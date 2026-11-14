@@ -111,22 +111,14 @@ export async function displayTree(
  * Check if a file or directory should be ignored
  */
 export function shouldIgnore(filePath: string): boolean {
-  const pathStr = path.resolve(filePath);
-  const name = path.basename(pathStr);
-  
-  // Check ignore patterns
+  // Callers check each entry while walking down, so ancestors are already filtered
+  // and only the entry's own name needs to match.
+  const name = path.basename(path.resolve(filePath));
+
   for (const pattern of IGNORE_PATTERNS) {
-    if (pattern.includes('*')) {
-      // Simple glob matching, convert * to regex
-      const regexPattern = pattern.replace(/\*/g, '.*');
-      const regex = new RegExp(regexPattern);
-      if (regex.test(name)) {
-        return true;
-      }
-    } else {
-      if (pathStr.includes(pattern) || name === pattern) {
-        return true;
-      }
+    const matched = pattern.includes('*') ? globToRegExp(pattern).test(name) : name === pattern;
+    if (matched) {
+      return true;
     }
   }
   
@@ -139,3 +131,10 @@ export function shouldIgnore(filePath: string): boolean {
   return false;
 }
 
+function globToRegExp(pattern: string): RegExp {
+  const source = pattern
+    .split('*')
+    .map(part => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+    .join('.*');
+  return new RegExp(`^${source}$`);
+}
