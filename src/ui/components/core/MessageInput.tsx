@@ -16,7 +16,7 @@ export default function MessageInput({
   value, 
   onChange, 
   onSubmit, 
-  placeholder = "... (Esc to clear, Ctrl+C to exit)",
+  placeholder = "... (Esc to clear, /exit or Ctrl+C to exit)",
   userMessageHistory = []
 }: MessageInputProps) {
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
