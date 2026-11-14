@@ -1,6 +1,4 @@
-import { HttpsProxyAgent } from 'https-proxy-agent';
-import { SocksProxyAgent } from 'socks-proxy-agent';
-import type { Agent } from 'http';
+import { ProxyAgent, Socks5ProxyAgent, type Dispatcher } from 'undici';
 import { ConfigManager } from './local-settings.js';
 
 // Module-level instance to avoid repeated instantiation
@@ -40,16 +38,21 @@ function getProxyUrl(proxyOverride?: string): string | undefined {
 /**
  * Determine whether a proxy URL refers to a SOCKS proxy or an HTTP(S) proxy.
  *
- * Recognizes `socks://`, `socks5://`, and `socks4://` schemes as SOCKS; any other scheme is treated as HTTP.
+ * Recognizes `socks://`, `socks5://`, `socks4://`, and `socks4a://` schemes as SOCKS; any other scheme is treated as HTTP.
  *
  * @param url - The proxy URL or scheme string to inspect.
  * @returns `'socks'` if the URL uses a SOCKS scheme, otherwise `'http'`.
  */
 function getProxyType(url: string): 'socks' | 'http' {
-  if (url.startsWith('socks://') || url.startsWith('socks5://') || url.startsWith('socks4://') || url.startsWith('socks4a://')) {
+  if (url.startsWith('socks://') || url.startsWith('socks5://') || isSocks4Url(url)) {
     return 'socks';
   }
   return 'http';
+}
+
+// undici only implements SOCKS5
+function isSocks4Url(url: string): boolean {
+  return url.startsWith('socks4://') || url.startsWith('socks4a://');
 }
 
 /**
@@ -98,31 +101,36 @@ function isValidProxyUrl(url: string): boolean {
 }
 
 /**
- * Creates an HTTP/SOCKS proxy agent based on an explicit override or environment variables.
+ * Creates an undici dispatcher for an HTTP or SOCKS5 proxy based on an explicit override or environment variables.
  *
- * Resolves a proxy URL (override -> HTTPS_PROXY/https_proxy -> HTTP_PROXY/http_proxy). If no proxy is configured, returns `undefined`. If the resolved URL is not a valid URL, the function logs an error and returns `undefined`. Otherwise it returns a `SocksProxyAgent` for SOCKS schemes (`socks://`, `socks5://`, `socks4://`) or an `HttpsProxyAgent` for other schemes. If agent construction fails the error is logged and `undefined` is returned.
+ * Resolves a proxy URL (override -> HTTPS_PROXY/https_proxy -> HTTP_PROXY/http_proxy). If no proxy is configured, returns `undefined`. If the resolved URL is not a valid URL or uses SOCKS4, the function logs an error and returns `undefined`. Otherwise it returns a `Socks5ProxyAgent` for `socks://` and `socks5://` or a `ProxyAgent` for other schemes. If dispatcher construction fails the error is logged and `undefined` is returned.
  *
  * @param proxyOverride - Optional explicit proxy URL to use instead of environment variables.
- * @returns A Node `Agent` configured for the proxy, or `undefined` when no valid proxy is available or agent creation fails.
+ * @returns An undici `Dispatcher` configured for the proxy, or `undefined` when no usable proxy is available or creation fails.
  */
-export function getProxyAgent(proxyOverride?: string): Agent | undefined {
+export function getProxyAgent(proxyOverride?: string): Dispatcher | undefined {
   const proxyUrl = getProxyUrl(proxyOverride);
-  
+
   if (!proxyUrl) {
     return undefined;
   }
-  
+
   if (!isValidProxyUrl(proxyUrl)) {
     console.error(`Invalid proxy URL: ${sanitizeProxyUrl(proxyUrl)}`);
     return undefined;
   }
-  
+
+  if (isSocks4Url(proxyUrl)) {
+    console.error(`SOCKS4 proxies are not supported; use socks5:// or http:// instead: ${sanitizeProxyUrl(proxyUrl)}`);
+    return undefined;
+  }
+
   try {
     // Create appropriate agent based on proxy type
     if (getProxyType(proxyUrl) === 'socks') {
-      return new SocksProxyAgent(proxyUrl);
+      return new Socks5ProxyAgent(proxyUrl);
     } else {
-      return new HttpsProxyAgent(proxyUrl);
+      return new ProxyAgent(proxyUrl);
     }
   } catch (error) {
     console.error(`Failed to create proxy agent: ${sanitizeProxyUrl(proxyUrl)}`);
@@ -146,10 +154,10 @@ export function getProxyInfo(proxyOverride?: string): { enabled: boolean; url?: 
     return { enabled: false };
   }
   
-  const isValid = isValidProxyUrl(proxyUrl);
-  // Return info for debugging even if URL is invalid, but enabled reflects validity
+  const isUsable = isValidProxyUrl(proxyUrl) && !isSocks4Url(proxyUrl);
+  // Return info for debugging even if the proxy is unusable, but enabled reflects usability
   return {
-    enabled: isValid,
+    enabled: isUsable,
     url: sanitizeProxyUrl(proxyUrl),
     type: getProxyType(proxyUrl)
   };

@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 import type { ClientOptions } from 'groq-sdk';
+import { fetch as undiciFetch } from 'undici';
 import { executeTool } from '../tools/tools.js';
 import { validateReadBeforeEdit, getReadBeforeEditError } from '../tools/validators.js';
 import { ALL_TOOL_SCHEMAS, DANGEROUS_TOOLS, APPROVAL_REQUIRED_TOOLS } from '../tools/tool-schemas.js';
@@ -201,7 +202,9 @@ When asked about your identity, you should identify yourself as a coding assista
     // Initialize Groq client with proxy if available
     const clientOptions: ClientOptions = { apiKey };
     if (proxyAgent) {
-      clientOptions.httpAgent = proxyAgent;
+      // Node's global fetch bundles its own undici, so use the fetch from the same undici as the dispatcher
+      clientOptions.fetch = undiciFetch as unknown as ClientOptions['fetch'];
+      clientOptions.fetchOptions = { dispatcher: proxyAgent } as ClientOptions['fetchOptions'];
     }
     
     this.client = new Groq(clientOptions);
