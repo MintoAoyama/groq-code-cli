@@ -1,4 +1,5 @@
 import { Box, Text } from 'ink';
+import { MUTED } from '../../theme.js';
 
 interface Usage {
   queue_time: number;
@@ -52,38 +53,38 @@ export default function Stats({ usage }: StatsProps) {
       </Box>
       
       <Box flexDirection="column" marginBottom={2}>
-        <Box justifyContent="flex-start" marginBottom={1} borderStyle="single" borderColor="gray" borderTop={false} borderLeft={false} borderRight={false} paddingBottom={0}>
-          <Text color="gray">Performance</Text>
+        <Box justifyContent="flex-start" marginBottom={1} borderStyle="single" borderColor={MUTED} borderTop={false} borderLeft={false} borderRight={false} paddingBottom={0}>
+          <Text color={MUTED}>Performance</Text>
         </Box>
         <Box flexDirection="row" justifyContent="center" gap={4}>
           <Box flexDirection="column" alignItems="center" paddingX={3}>
             <Text color="blue" bold>{stats.totalRequests}</Text>
-            <Text color="gray" dimColor>Requests</Text>
+            <Text color={MUTED}>Requests</Text>
           </Box>
           <Box flexDirection="column" alignItems="center" paddingX={3}>
             <Text color="yellow" bold>{stats.processingTime}</Text>
-            <Text color="gray" dimColor>Response Time</Text>
+            <Text color={MUTED}>Response Time</Text>
           </Box>
         </Box>
       </Box>
       
       <Box flexDirection="column">
-        <Box justifyContent="flex-start" marginBottom={1} borderStyle="single" borderColor="gray" borderTop={false} borderLeft={false} borderRight={false} paddingBottom={0}>
-          <Text color="gray">Token Usage</Text>
+        <Box justifyContent="flex-start" marginBottom={1} borderStyle="single" borderColor={MUTED} borderTop={false} borderLeft={false} borderRight={false} paddingBottom={0}>
+          <Text color={MUTED}>Token Usage</Text>
         </Box>
         <Box flexDirection="row" justifyContent="center" gap={4}>
           <Box flexDirection="column" alignItems="center" paddingX={3}>
             <Text color="cyan" bold>{stats.promptTokens.toLocaleString()}</Text>
-            <Text color="gray" dimColor>Input Tokens</Text>
+            <Text color={MUTED}>Input Tokens</Text>
           </Box>
           <Box flexDirection="column" alignItems="center" paddingX={3}>
             <Text color="green" bold>{stats.completionTokens.toLocaleString()}</Text>
-            <Text color="gray" dimColor>Output Tokens</Text>
+            <Text color={MUTED}>Output Tokens</Text>
           </Box>
           {usage?.prompt_tokens_details && (
             <Box flexDirection="column" alignItems="center" paddingX={3}>
               <Text color="magenta" bold>{stats.cachedTokens.toLocaleString()} ({stats.cachedPercent}%)</Text>
-              <Text color="gray" dimColor>Cached</Text>
+              <Text color={MUTED}>Cached</Text>
             </Box>
           )}
         </Box>

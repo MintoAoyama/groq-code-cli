@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { MUTED } from '../../theme.js';
 
 interface MaxIterationsContinueProps {
   maxIterations: number;
@@ -45,7 +46,7 @@ export default function MaxIterationsContinue({
       
       {/* Message */}
       <Box marginBottom={1}>
-        <Text color="gray">
+        <Text color={MUTED}>
           The model has been iterating for a while now ({maxIterations} iterations). 
           It may be stuck in a loop or working on a complex task.
         </Text>

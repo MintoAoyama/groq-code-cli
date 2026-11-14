@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { MUTED } from '../../theme.js';
 
 interface ErrorRetryProps {
   error: string;
@@ -27,18 +28,18 @@ export default function ErrorRetry({ error, onRetry, onCancel }: ErrorRetryProps
           <Text color="green" bold>
             [R]etry
           </Text>
-          <Text color="gray"> - Try the request again</Text>
+          <Text color={MUTED}> - Try the request again</Text>
         </Box>
         <Box>
           <Text color="red" bold>
             [C]ancel
           </Text>
-          <Text color="gray"> - Stop and return to input</Text>
+          <Text color={MUTED}> - Stop and return to input</Text>
         </Box>
       </Box>
       
       <Box marginTop={1}>
-        <Text color="gray" dimColor>
+        <Text color={MUTED}>
           Press R to retry or C to cancel
         </Text>
       </Box>

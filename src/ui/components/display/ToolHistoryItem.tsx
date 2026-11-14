@@ -1,4 +1,5 @@
 import { Box, Text } from 'ink';
+import { MUTED } from '../../theme.js';
 import { ToolExecution } from '../../hooks/useAgent.js';
 import DiffPreview from './DiffPreview.js';
 import { formatToolParams } from '../../../tools/tools.js';
@@ -30,7 +31,7 @@ export default function ToolHistoryItem({ execution }: ToolHistoryItemProps) {
       case 'failed':
         return 'red';
       case 'canceled':
-        return 'gray';
+        return MUTED;
       default:
         return 'white';
     }
@@ -129,7 +130,7 @@ export default function ToolHistoryItem({ execution }: ToolHistoryItemProps) {
         </Box>
       ) : formatToolParams(name, args, { includePrefix: false, separator: ': ' }) ? (
         <Box>
-          <Text color="gray">
+          <Text color={MUTED}>
             {formatToolParams(name, args, { includePrefix: false, separator: ': ' })}
           </Text>
         </Box>
@@ -155,7 +156,7 @@ export default function ToolHistoryItem({ execution }: ToolHistoryItemProps) {
                 </Box>
               )}
               {result.message && !result.content && !(name === 'create_tasks' || name === 'update_tasks') && (
-                <Text color="gray">
+                <Text color={MUTED}>
                   {result.message}
                 </Text>
               )}
@@ -173,7 +174,7 @@ export default function ToolHistoryItem({ execution }: ToolHistoryItemProps) {
           <Text color="red">
             Tool execution failed
             {result?.error && (
-              <Text color="gray">
+              <Text color={MUTED}>
                 {' '}({result.error})
               </Text>
             )}
@@ -183,7 +184,7 @@ export default function ToolHistoryItem({ execution }: ToolHistoryItemProps) {
 
       {status === 'canceled' && (
         <Box>
-          <Text color="gray">
+          <Text color={MUTED}>
             Tool execution canceled by user
           </Text>
         </Box>

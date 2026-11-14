@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { MUTED } from '../../theme.js';
 
 interface LoginProps {
   onSubmit: (apiKey: string) => void;
@@ -45,7 +46,7 @@ export default function Login({ onSubmit, onCancel }: LoginProps) {
       </Box>
       
       <Box marginBottom={1}>
-        <Text color="gray">
+        <Text color={MUTED}>
           Enter your Groq API key to continue. You can get one from <Text underline>https://console.groq.com/keys</Text>
         </Text>
       </Box>
