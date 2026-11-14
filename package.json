@@ -7,7 +7,7 @@
 	},
 	"type": "module",
 	"engines": {
-		"node": ">=16"
+		"node": ">=22"
 	},
 	"scripts": {
 		"build": "tsc && chmod +x dist/core/cli.js",
@@ -41,8 +41,7 @@
 			"--loader=ts-node/esm"
 		],
 		"files": [
-			"src/**/*.test.ts",
-			"!**/*.d.ts"
+			"test/**/*.test.ts"
 		]
 	}
 }

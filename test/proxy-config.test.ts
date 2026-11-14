@@ -1,5 +1,5 @@
 import test from 'ava';
-import { getProxyAgent, getProxyInfo } from '../utils/proxy-config.js';
+import { getProxyAgent, getProxyInfo } from '../src/utils/proxy-config.js';
 
 // Helper to set and restore environment variables
 function withEnv(env: Record<string, string | undefined>, fn: () => void) {
