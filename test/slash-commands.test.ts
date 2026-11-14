@@ -18,7 +18,7 @@ function createContext() {
 }
 
 test('getCommandNames lists every built-in command', t => {
-  t.deepEqual(getCommandNames().sort(), ['clear', 'help', 'init', 'login', 'model', 'reasoning', 'stats']);
+  t.deepEqual(getCommandNames().sort(), ['clear', 'copy', 'copy-pick', 'exit', 'help', 'init', 'login', 'model', 'reasoning', 'stats']);
 });
 
 test('handleSlashCommand records the input and runs the matching command', t => {
@@ -48,4 +48,35 @@ test('/help lists every command', t => {
   for (const name of getCommandNames()) {
     t.true(messages[1].content.includes(`/${name} - `), `missing /${name}`);
   }
+});
+
+test('/exit calls exit', t => {
+  const { context } = createContext();
+  let exited = 0;
+  handleSlashCommand('/exit', { ...context, exit: () => { exited++; } });
+  t.is(exited, 1);
+});
+
+test('/copy passes the reply index from its argument', t => {
+  const { context } = createContext();
+  const indexes: number[] = [];
+  const copyReply = (index: number) => { indexes.push(index); };
+  handleSlashCommand('/copy', { ...context, copyReply });
+  handleSlashCommand('/copy 3', { ...context, copyReply });
+  t.deepEqual(indexes, [1, 3]);
+});
+
+test('/copy rejects an argument that is not a positive number', t => {
+  const { context, messages } = createContext();
+  let called = false;
+  handleSlashCommand('/copy two', { ...context, copyReply: () => { called = true; } });
+  t.false(called);
+  t.true(messages[1].content.startsWith('Usage: /copy [N].'));
+});
+
+test('/copy-pick opens the picker', t => {
+  const { context } = createContext();
+  let opened = false;
+  handleSlashCommand('/copy-pick', { ...context, openCopyPicker: () => { opened = true; } });
+  t.true(opened);
 });

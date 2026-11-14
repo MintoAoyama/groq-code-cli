@@ -13,7 +13,11 @@ import Login from '../input-overlays/Login.js';
 import ModelSelector from '../input-overlays/ModelSelector.js';
 import MaxIterationsContinue from '../input-overlays/MaxIterationsContinue.js';
 import ErrorRetry from '../input-overlays/ErrorRetry.js';
+import CopyPicker, { type CopyChoice } from '../input-overlays/CopyPicker.js';
+import StatusLine from '../display/StatusLine.js';
 import { handleSlashCommand } from '../../../commands/index.js';
+import { codeBlocksOf, repliesOf } from '../../../utils/replies.js';
+import { copyToClipboard } from '../../../utils/clipboard.js';
 
 interface ChatProps {
   agent: Agent;
@@ -83,6 +87,8 @@ export default function Chat({ agent }: ChatProps) {
   const [showInput, setShowInput] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [showModelSelector, setShowModelSelector] = useState(false);
+  // null hides the picker; replies with no initialReply lists them for /copy-pick.
+  const [copyPicker, setCopyPicker] = useState<{ replies: string[]; initialReply?: number } | null>(null);
 
   // Handle global keyboard shortcuts
   useInput((input, key) => {
@@ -123,13 +129,55 @@ export default function Chat({ agent }: ChatProps) {
 
   // Hide input when processing, waiting for approval, error retry, or showing login/model selector
   useEffect(() => {
-    setShowInput(!isProcessing && !pendingApproval && !pendingError && !showLogin && !showModelSelector);
-  }, [isProcessing, pendingApproval, pendingError, showLogin, showModelSelector]);
+    setShowInput(!isProcessing && !pendingApproval && !pendingError && !showLogin && !showModelSelector && !copyPicker);
+  }, [isProcessing, pendingApproval, pendingError, showLogin, showModelSelector, copyPicker]);
+
+  const copyChoice = async ({ text, label }: CopyChoice) => {
+    setCopyPicker(null);
+    const result = await copyToClipboard(text);
+    addMessage({
+      role: 'system',
+      content: result.ok
+        ? `Copied ${label} (${text.length} chars) via ${result.method}.`
+        : `Copy failed: ${result.reason}.`,
+    });
+  };
+
+  const copyReply = (index: number) => {
+    const replies = repliesOf(messages);
+    if (index > replies.length) {
+      addMessage({
+        role: 'system',
+        content: replies.length === 0 ? 'No replies to copy yet.' : `Only ${replies.length} replies to copy.`,
+      });
+      return;
+    }
+    const text = replies[index - 1];
+    if (codeBlocksOf(text).length === 0) {
+      copyChoice({ text, label: `reply ${index}` });
+    } else {
+      setCopyPicker({ replies, initialReply: index - 1 });
+    }
+  };
+
+  const openCopyPicker = () => {
+    const replies = repliesOf(messages);
+    if (replies.length === 0) {
+      addMessage({ role: 'system', content: 'No replies to copy yet.' });
+      return;
+    }
+    setCopyPicker({ replies });
+  };
 
 
   const handleSendMessage = async (message: string) => {
     if (message.trim() && !isProcessing) {
       setInputValue('');
+
+      if (message.trim().toLowerCase() === 'exit') {
+        exit();
+        return;
+      }
       
       // Handle slash commands
       if (message.startsWith('/')) {
@@ -144,6 +192,9 @@ export default function Chat({ agent }: ChatProps) {
           toggleReasoning,
           showReasoning,
           sessionStats,
+          exit,
+          copyReply,
+          openCopyPicker,
         });
         return;
       }
@@ -267,12 +318,19 @@ export default function Chat({ agent }: ChatProps) {
             onCancel={handleModelCancel}
             currentModel={agent.getCurrentModel?.() || undefined}
           />
+        ) : copyPicker ? (
+          <CopyPicker
+            replies={copyPicker.replies}
+            initialReply={copyPicker.initialReply}
+            onCopy={copyChoice}
+            onCancel={() => setCopyPicker(null)}
+          />
         ) : showInput ? (
           <MessageInput
             value={inputValue}
             onChange={setInputValue}
             onSubmit={handleSendMessage}
-            placeholder="... (Esc to clear, Ctrl+C to exit)"
+            placeholder="... (Esc to clear, /exit or Ctrl+C to exit)"
             userMessageHistory={userMessageHistory}
           />
         ) : (
@@ -282,18 +340,16 @@ export default function Chat({ agent }: ChatProps) {
         )}
       </Box>
 
-      <Box justifyContent="space-between" paddingX={1}>
-        <Box>
-          <Text color="cyan" bold>
-            {sessionAutoApprove ? 'auto-approve edits is on' : ''}
-          </Text>
-        </Box>
-        <Box>
-          <Text color={MUTED}>
-            {agent.getCurrentModel?.() || ''}
-          </Text>
-        </Box>
-      </Box>
+      <StatusLine
+        model={agent.getCurrentModel()}
+        autoApprove={sessionAutoApprove}
+        isProcessing={isProcessing}
+        promptTokens={sessionStats.promptTokens}
+        completionTokens={sessionStats.completionTokens}
+        totalTokens={sessionStats.totalTokens}
+        contextTokens={sessionStats.contextTokens}
+        rateLimit={agent.getRateLimit()}
+      />
     </Box>
   );
 }

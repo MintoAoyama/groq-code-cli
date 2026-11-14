@@ -1,4 +1,6 @@
 export interface CommandContext {
+  // Text after the command name, trimmed.
+  args?: string;
   addMessage: (message: any) => void;
   clearHistory: () => void;
   setShowLogin: (show: boolean) => void;
@@ -12,6 +14,9 @@ export interface CommandContext {
     totalRequests: number;
     totalTime: number;
   };
+  exit?: () => void;
+  copyReply?: (index: number) => void;
+  openCopyPicker?: () => void;
 }
 
 export interface CommandDefinition {

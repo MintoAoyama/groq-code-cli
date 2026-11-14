@@ -22,7 +22,7 @@ Navigation:
 Keyboard Shortcuts:
 - Esc - Clear input box / Interrupt processing / Reject tool approval
 - Shift+Tab - Toggle auto-approval for editing tools
-- Ctrl+C - Exit the application
+- Ctrl+C - Exit the application (or type /exit or exit)
 
 This is a highly customizable, lightweight, and open-source coding CLI powered by Groq. Ask for help with coding tasks, debugging issues, or explaining code.`
     });
