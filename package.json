@@ -21,10 +21,9 @@
 		"chalk": "^5.4.1",
 		"commander": "^14.0.0",
 		"groq-sdk": "^1.0.0",
-		"https-proxy-agent": "^7.0.6",
 		"ink": "^6.0.1",
 		"react": "^19.1.0",
-		"socks-proxy-agent": "^8.0.5"
+		"undici": "^8.12.4"
 	},
 	"devDependencies": {
 		"@types/react": "^19.1.8",

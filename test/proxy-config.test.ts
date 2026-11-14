@@ -1,4 +1,5 @@
 import test from 'ava';
+import { ProxyAgent, Socks5ProxyAgent } from 'undici';
 import { getProxyAgent, getProxyInfo } from '../src/utils/proxy-config.js';
 
 // Helper to set and restore environment variables
@@ -129,38 +130,39 @@ test('getProxyAgent returns undefined when no proxy is configured', t => {
   });
 });
 
-test('getProxyAgent creates HttpsProxyAgent for HTTP proxy', t => {
+test('getProxyAgent creates ProxyAgent for HTTP proxy', t => {
   withEnv({ HTTP_PROXY: 'http://proxy.example.com:8080' }, () => {
-    const agent = getProxyAgent();
-    t.not(agent, undefined);
-    // Check that it's an HttpsProxyAgent instance
-    t.truthy(agent);
+    t.true(getProxyAgent() instanceof ProxyAgent);
   });
 });
 
-test('getProxyAgent creates SocksProxyAgent for SOCKS5 proxy', t => {
+test('getProxyAgent creates Socks5ProxyAgent for SOCKS5 proxy', t => {
   withEnv({ HTTP_PROXY: 'socks5://socks-proxy.example.com:1080' }, () => {
-    const agent = getProxyAgent();
-    t.not(agent, undefined);
-    // Check that it's a SocksProxyAgent instance
-    t.truthy(agent);
+    t.true(getProxyAgent() instanceof Socks5ProxyAgent);
   });
 });
 
 test('getProxyAgent uses override when provided', t => {
   withEnv({ HTTP_PROXY: 'http://env-proxy.example.com:8080' }, () => {
-    const agent = getProxyAgent('http://override-proxy.example.com:9090');
-    t.not(agent, undefined);
-    t.truthy(agent);
+    t.true(getProxyAgent('http://override-proxy.example.com:9090') instanceof ProxyAgent);
   });
 });
 
 test('getProxyAgent creates correct agent for SOCKS override', t => {
   withEnv({ HTTP_PROXY: 'http://env-proxy.example.com:8080' }, () => {
-    const agent = getProxyAgent('socks5://override-socks.example.com:1080');
-    t.not(agent, undefined);
-    t.truthy(agent);
+    t.true(getProxyAgent('socks5://override-socks.example.com:1080') instanceof Socks5ProxyAgent);
   });
+});
+
+test('getProxyAgent rejects SOCKS4 proxies', t => {
+  t.is(getProxyAgent('socks4://socks-proxy.example.com:1080'), undefined);
+  t.is(getProxyAgent('socks4a://socks-proxy.example.com:1080'), undefined);
+});
+
+test('getProxyInfo reports SOCKS4 proxies as disabled', t => {
+  const info = getProxyInfo('socks4://socks-proxy.example.com:1080');
+  t.is(info.enabled, false);
+  t.is(info.type, 'socks');
 });
 
 test('getProxyInfo sanitizes proxy URLs with credentials', t => {

@@ -120,7 +120,7 @@ export class ConfigManager {
         throw new Error(`Invalid proxy URL: ${trimmed}`);
       }
       
-      const allowedProtocols = new Set(['http:', 'https:', 'socks:', 'socks4:', 'socks5:']);
+      const allowedProtocols = new Set(['http:', 'https:', 'socks:', 'socks5:']);
       if (!allowedProtocols.has(parsedUrl.protocol)) {
         throw new Error(`Unsupported proxy protocol: ${parsedUrl.protocol}`);
       }
