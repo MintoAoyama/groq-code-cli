@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 import type { ClientOptions } from 'groq-sdk';
+import type { ChatCompletionCreateParamsNonStreaming } from 'groq-sdk/resources/chat/completions';
 import { fetch as undiciFetch } from 'undici';
 import { executeTool } from '../tools/tools.js';
 import { validateReadBeforeEdit, getReadBeforeEditError } from '../tools/validators.js';
@@ -572,9 +573,11 @@ When asked about your identity, you should identify yourself as a coding assista
     }
   }
 
-  // groq-sdk 0.27 types reasoning_effort as 'none' | 'default' only; the API accepts more per model.
-  private reasoningEffortParam(): { reasoning_effort?: 'none' | 'default' } {
-    return this.reasoningEffort === null ? {} : { reasoning_effort: this.reasoningEffort as 'none' | 'default' };
+  // groq-sdk's type lacks values some models accept, such as 'xhigh' for meta-models/muse-spark-open.
+  private reasoningEffortParam(): Pick<ChatCompletionCreateParamsNonStreaming, 'reasoning_effort'> {
+    return this.reasoningEffort === null
+      ? {}
+      : { reasoning_effort: this.reasoningEffort as ChatCompletionCreateParamsNonStreaming['reasoning_effort'] };
   }
 
   private async executeToolCall(toolCall: any): Promise<Record<string, any>> {
