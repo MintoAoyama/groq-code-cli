@@ -5,6 +5,7 @@ import { render } from 'ink';
 import React from 'react';
 import { Agent } from './agent.js';
 import App from '../ui/App.js';
+import { getVersion } from '../utils/version.js';
 
 const program = new Command();
 
@@ -74,7 +75,7 @@ async function startChat(
 program
   .name('groq')
   .description('Groq Code CLI')
-  .version('1.0.2')
+  .version(getVersion())
   .option('-t, --temperature <temperature>', 'Temperature for generation', parseFloat, 1.0)
   .option('-s, --system <message>', 'Custom system message')
   .option('-d, --debug', 'Enable debug logging to debug-agent.log in current directory')
