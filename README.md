@@ -31,7 +31,7 @@ https://github.com/user-attachments/assets/5902fd07-1882-4ee7-825b-50d627f8c96a
 
 Coding CLIs are everywhere. The Groq Code CLI is different. It is a blueprint, a building block, for developers looking to leverage, customize, and extend a CLI to be entirely their own. Leading open-source CLIs are all fantastic, inspiring for the open-source community, and hugely rich in features. However, that's just it: they are *gigantic*. Feature-rich: yes, but local development with such a large and interwoven codebase is unfriendly and overwhelming. **This is a project for developers looking to dive in.**
 
-Groq Code CLI is your chance to make a CLI truly your own. Equipped with all of the features, tools, commands, and UI/UX that’s familiar to your current favorite CLI, we make it simple to add new features you’ve always wanted. By massively cutting down on bloat and code mass without compromising on quality, you can jump into modifying this CLI however you see fit. By leveraging models on Groq, you can iterate even faster (`/models` to see available models). Simply activate the CLI by typing `groq` in your terminal. Use Groq Code CLI in any directory just like you would with any other coding CLI. Use it in this directory to have it build and customize itself!
+Groq Code CLI is your chance to make a CLI truly your own. Equipped with all of the features, tools, commands, and UI/UX that’s familiar to your current favorite CLI, we make it simple to add new features you’ve always wanted. By massively cutting down on bloat and code mass without compromising on quality, you can jump into modifying this CLI however you see fit. By leveraging models on Groq, you can iterate even faster (`/model` to see available models). Simply activate the CLI by typing `groq` in your terminal. Use Groq Code CLI in any directory just like you would with any other coding CLI. Use it in this directory to have it build and customize itself!
 
 A few customization ideas to get started:
 - New slash commands (e.g. /mcp, /deadcode, /complexity, etc.)
@@ -101,7 +101,7 @@ And type the `/login` command:
 ![Login](docs/login.png)
 >Get your API key from the <strong>Groq Console</strong> [here](https://console.groq.com/keys)
 
-This creates a .groq/ folder in your home directory that stores your API key, default model selection, and any other config you wish to add.
+This creates a .groq/ folder in your home directory that stores your API key, default model selection, the reasoning effort chosen for each model, and any other config you wish to add.
 
 You can also set your API key for your current directory via environment variable:
 ```bash
@@ -136,6 +136,24 @@ Priority: `--proxy` > `HTTPS_PROXY` > `HTTP_PROXY`
 - `/copy-pick` - Pick an earlier reply from a list and copy it
 - `/exit` - Exit the application (typing `exit` also works)
 
+`/copy` and `/copy-pick` write to the clipboard with `pbcopy`, `clip`, `wl-copy`, `xclip` or `xsel`. Over SSH, or when none of them is available, they send the text to the terminal with OSC 52 instead, which the terminal must allow (in iTerm2: "Applications in terminal may access clipboard").
+
+### Status Line
+
+Two lines under the input box show the session at a glance:
+
+```
+ openai/gpt-oss-120b (high) | Git: main (+12,-3)
+ Ctx: 12.8k (9.8%) | $0.0023 | Tokens: 12.8k ( 12k / 800 ) | TPM left: 241.5k/250k | RPD left: 997/1000
+```
+
+- Model, with the reasoning effort set by `/effort`
+- Git branch and uncommitted line changes against `HEAD`, when started inside a repository
+- `Ctx`: tokens used by the latest request, with the share of the context window for models listed in `src/utils/models.ts`
+- Estimated session cost, for models with prices in `src/utils/models.ts`
+- Session tokens in total ( input / output )
+- Remaining tokens per minute and requests per day, from the rate limit headers of the latest response
+
 
 ## Development
 
@@ -149,6 +167,7 @@ npm run dev
 ```bash
 npm run build      # Build TypeScript to dist/
 npm run dev        # Build in watch mode
+npm test           # Run the tests
 ```
 
 ### Project Structure
@@ -159,10 +178,15 @@ groq-code-cli/
 │   ├── commands/           
 │   │   ├── definitions/        # Individual command implementations
 │   │   │   ├── clear.ts        # Clear chat history command
+│   │   │   ├── copy.ts         # Copy reply commands (/copy, /copy-pick)
+│   │   │   ├── effort.ts       # Reasoning effort command
+│   │   │   ├── exit.ts         # Exit command
 │   │   │   ├── help.ts         # Help command
+│   │   │   ├── init.ts         # Project context generation command
 │   │   │   ├── login.ts        # Authentication command
 │   │   │   ├── model.ts        # Model selection command
-│   │   │   └── reasoning.ts    # Reasoning toggle command
+│   │   │   ├── reasoning.ts    # Reasoning toggle command
+│   │   │   └── stats.ts        # Session statistics command
 │   │   ├── base.ts             # Base command interface
 │   │   └── index.ts            # Command exports
 │   ├── core/               
@@ -174,17 +198,28 @@ groq-code-cli/
 │   │   └── validators.ts       # Input validation utilities
 │   ├── ui/                 
 │   │   ├── App.tsx             # Main application component
+│   │   ├── banner.ts           # Start-up banner
+│   │   ├── theme.ts            # Shared colors
 │   │   ├── components/     
 │   │   │   ├── core/           # Core chat TUI components
 │   │   │   ├── display/        # Auxiliary components for TUI display
 │   │   │   └── input-overlays/ # Input overlays and modals that occupy the MessageInput box
 │   │   └── hooks/          
 │   └── utils/              
+│       ├── clipboard.ts        # Clipboard access for /copy
 │       ├── constants.ts        # Application constants
+│       ├── context.ts          # Project context generation for /init
 │       ├── file-ops.ts         # File system operations
 │       ├── local-settings.ts   # Local configuration management
-│       └── markdown.ts         # Markdown processing utilities
+│       ├── markdown.ts         # Markdown processing utilities
+│       ├── models.ts           # Per-model context window, prices and reasoning efforts
+│       ├── proxy-config.ts     # Proxy resolution
+│       ├── replies.ts          # Reply and code block extraction for /copy
+│       ├── status.ts           # Status line data (git, rate limits, formatting)
+│       └── version.ts          # Version string with build info
 ├── docs/                   
+├── scripts/                    # Build helpers
+├── test/                       # Tests (ava)
 ├── package.json    
 ├── tsconfig.json        
 └── LICENSE          
@@ -248,6 +283,8 @@ export const yourCommand: CommandDefinition = {
   }
 };
 ```
+
+Text typed after the command name arrives as `args` in the context (for `/copy 2`, `args` is `'2'`).
 
 2. **Register the command** in `src/commands/index.ts` by importing it and adding to the `availableCommands` array.
 

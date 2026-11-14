@@ -7,10 +7,10 @@ export interface ModelInfo {
   outputPrice?: number;
 }
 
-// From https://console.groq.com/docs/models (checked 2026-11-15). Models missing here
-// show no cost or context percentage rather than a guess.
 const GPT_OSS_EFFORTS = ['low', 'medium', 'high'];
 
+// From https://console.groq.com/docs/models (checked 2026-11-15). Models missing here
+// show no cost or context percentage and take no reasoning effort, rather than a guess.
 const MODELS: Record<string, ModelInfo> = {
   'openai/gpt-oss-120b': { contextWindow: 131_072, efforts: GPT_OSS_EFFORTS, inputPrice: 0.15, outputPrice: 0.6 },
   'openai/gpt-oss-20b': { contextWindow: 131_072, efforts: GPT_OSS_EFFORTS, inputPrice: 0.075, outputPrice: 0.3 },
