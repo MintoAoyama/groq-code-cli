@@ -87,6 +87,8 @@ export default function Chat({ agent }: ChatProps) {
   const [showInput, setShowInput] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [showModelSelector, setShowModelSelector] = useState(false);
+  // Mirrors the agent's value so the status line re-renders when it changes.
+  const [reasoningEffort, setReasoningEffortState] = useState(agent.getReasoningEffort());
   // null hides the picker; replies with no initialReply lists them for /copy-pick.
   const [copyPicker, setCopyPicker] = useState<{ replies: string[]; initialReply?: number } | null>(null);
 
@@ -193,6 +195,12 @@ export default function Chat({ agent }: ChatProps) {
           showReasoning,
           sessionStats,
           exit,
+          model: agent.getCurrentModel(),
+          reasoningEffort,
+          setReasoningEffort: (effort: string | null) => {
+            agent.setReasoningEffort(effort);
+            setReasoningEffortState(effort);
+          },
           copyReply,
           openCopyPicker,
         });
@@ -241,6 +249,7 @@ export default function Chat({ agent }: ChatProps) {
     clearSessionStats();
     // Set the new model on the agent
     agent.setModel(model);
+    setReasoningEffortState(agent.getReasoningEffort());
     addMessage({
       role: 'system',
       content: `Switched to model: ${model}. Chat history has been cleared.`,
@@ -342,6 +351,7 @@ export default function Chat({ agent }: ChatProps) {
 
       <StatusLine
         model={agent.getCurrentModel()}
+        reasoningEffort={reasoningEffort}
         autoApprove={sessionAutoApprove}
         isProcessing={isProcessing}
         promptTokens={sessionStats.promptTokens}

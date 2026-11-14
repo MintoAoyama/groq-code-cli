@@ -6,6 +6,8 @@ interface Config {
   groqApiKey?: string;
   defaultModel?: string;
   groqProxy?: string;
+  // Keyed by model, since each model accepts its own set of values.
+  reasoningEfforts?: Record<string, string>;
 }
 
 const CONFIG_DIR = '.groq'; // In home directory
@@ -96,6 +98,30 @@ export class ConfigManager {
       this.writeConfig(config);
     } catch (error) {
       throw new Error(`Failed to save default model: ${error}`);
+    }
+  }
+
+  public getReasoningEffort(model: string): string | null {
+    return this.readConfig().reasoningEfforts?.[model] ?? null;
+  }
+
+  public setReasoningEffort(model: string, effort: string | null): void {
+    try {
+      const config = this.readConfig();
+      const efforts = { ...config.reasoningEfforts };
+      if (effort === null) {
+        delete efforts[model];
+      } else {
+        efforts[model] = effort;
+      }
+      if (Object.keys(efforts).length === 0) {
+        delete config.reasoningEfforts;
+      } else {
+        config.reasoningEfforts = efforts;
+      }
+      this.writeConfig(config);
+    } catch (error) {
+      throw new Error(`Failed to save reasoning effort: ${error}`);
     }
   }
 

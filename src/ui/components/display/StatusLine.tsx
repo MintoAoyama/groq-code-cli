@@ -14,6 +14,7 @@ const GIT_REFRESH_MS = 5000;
 
 interface StatusLineProps {
   model: string;
+  reasoningEffort: string | null;
   autoApprove: boolean;
   isProcessing: boolean;
   promptTokens: number;
@@ -45,6 +46,7 @@ function useGitStatus(isProcessing: boolean): GitStatus | undefined {
 
 export default function StatusLine({
   model,
+  reasoningEffort,
   autoApprove,
   isProcessing,
   promptTokens,
@@ -57,7 +59,12 @@ export default function StatusLine({
   const contextWindow = getModelInfo(model)?.contextWindow;
   const cost = estimateCost(model, promptTokens, completionTokens);
 
-  const firstLine: React.ReactNode[] = [<Text key="model">{model}</Text>];
+  const firstLine: React.ReactNode[] = [
+    <Text key="model">
+      {model}
+      {reasoningEffort !== null && <Text color="cyan"> ({reasoningEffort})</Text>}
+    </Text>,
+  ];
   if (git) {
     firstLine.push(
       <Text key="git">

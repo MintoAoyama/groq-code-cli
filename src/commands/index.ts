@@ -8,6 +8,7 @@ import { reasoningCommand } from './definitions/reasoning.js';
 import { statsCommand } from './definitions/stats.js';
 import { copyCommand, copyPickCommand } from './definitions/copy.js';
 import { exitCommand } from './definitions/exit.js';
+import { effortCommand } from './definitions/effort.js';
 
 const availableCommands: CommandDefinition[] = [
   helpCommand,
@@ -16,6 +17,7 @@ const availableCommands: CommandDefinition[] = [
   clearCommand,
   initCommand,
   reasoningCommand,
+  effortCommand,
   statsCommand,
   copyCommand,
   copyPickCommand,
