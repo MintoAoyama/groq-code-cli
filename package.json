@@ -10,7 +10,7 @@
 		"node": ">=22"
 	},
 	"scripts": {
-		"build": "tsc && chmod +x dist/core/cli.js",
+		"build": "tsc && node scripts/write-build-info.mjs && chmod +x dist/core/cli.js",
 		"dev": "tsc --watch",
 		"test": "ava"
 	},
