@@ -130,6 +130,7 @@ Priority: `--proxy` > `HTTPS_PROXY` > `HTTP_PROXY`
 - `/model` - Select your Groq model
 - `/clear` - Clear chat history and context
 - `/reasoning` - Toggle display of reasoning content in messages
+- `/effort [value]` - Show or set the reasoning effort sent to models that take one (`/effort auto` stops sending it); saved per model
 - `/stats` - Display session statistics and token usage
 - `/copy [N]` - Copy the latest reply, or the Nth-latest; a reply with code blocks opens a picker for the whole reply or one block
 - `/copy-pick` - Pick an earlier reply from a list and copy it

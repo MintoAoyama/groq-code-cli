@@ -15,6 +15,9 @@ export interface CommandContext {
     totalTime: number;
   };
   exit?: () => void;
+  model?: string;
+  reasoningEffort?: string | null;
+  setReasoningEffort?: (effort: string | null) => void;
   copyReply?: (index: number) => void;
   openCopyPicker?: () => void;
 }

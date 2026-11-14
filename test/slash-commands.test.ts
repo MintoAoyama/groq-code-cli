@@ -18,7 +18,7 @@ function createContext() {
 }
 
 test('getCommandNames lists every built-in command', t => {
-  t.deepEqual(getCommandNames().sort(), ['clear', 'copy', 'copy-pick', 'exit', 'help', 'init', 'login', 'model', 'reasoning', 'stats']);
+  t.deepEqual(getCommandNames().sort(), ['clear', 'copy', 'copy-pick', 'effort', 'exit', 'help', 'init', 'login', 'model', 'reasoning', 'stats']);
 });
 
 test('handleSlashCommand records the input and runs the matching command', t => {
@@ -79,4 +79,47 @@ test('/copy-pick opens the picker', t => {
   let opened = false;
   handleSlashCommand('/copy-pick', { ...context, openCopyPicker: () => { opened = true; } });
   t.true(opened);
+});
+
+function effortContext(model: string, reasoningEffort: string | null = null) {
+  const { context, messages } = createContext();
+  const set: (string | null)[] = [];
+  return {
+    context: { ...context, model, reasoningEffort, setReasoningEffort: (e: string | null) => { set.push(e); } },
+    messages,
+    set,
+  };
+}
+
+test('/effort without a value shows the current value and the options', t => {
+  const { context, messages, set } = effortContext('openai/gpt-oss-120b', 'high');
+  handleSlashCommand('/effort', context);
+  t.deepEqual(set, []);
+  t.is(messages[1].content, 'Reasoning effort for openai/gpt-oss-120b: high. Options: low, medium, high, auto.');
+});
+
+test('/effort sets a value the model accepts, case-insensitively', t => {
+  const { context, set } = effortContext('openai/gpt-oss-120b');
+  handleSlashCommand('/effort HIGH', context);
+  t.deepEqual(set, ['high']);
+});
+
+test('/effort auto clears the value', t => {
+  const { context, set } = effortContext('openai/gpt-oss-120b', 'low');
+  handleSlashCommand('/effort auto', context);
+  t.deepEqual(set, [null]);
+});
+
+test('/effort rejects a value the model does not accept', t => {
+  const { context, messages, set } = effortContext('openai/gpt-oss-120b');
+  handleSlashCommand('/effort none', context);
+  t.deepEqual(set, []);
+  t.true(messages[1].content.startsWith('Unknown reasoning effort "none"'));
+});
+
+test('/effort tells when the model takes no effort', t => {
+  const { context, messages, set } = effortContext('moonshotai/kimi-k2-instruct');
+  handleSlashCommand('/effort high', context);
+  t.deepEqual(set, []);
+  t.is(messages[1].content, 'moonshotai/kimi-k2-instruct does not take a reasoning effort.');
 });

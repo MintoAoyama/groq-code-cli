@@ -6,6 +6,7 @@ import { ALL_TOOL_SCHEMAS, DANGEROUS_TOOLS, APPROVAL_REQUIRED_TOOLS } from '../t
 import { ConfigManager } from '../utils/local-settings.js';
 import { getProxyAgent, getProxyInfo } from '../utils/proxy-config.js';
 import { parseRateLimit, type RateLimit } from '../utils/status.js';
+import { getEfforts } from '../utils/models.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -38,6 +39,7 @@ export class Agent {
   private currentAbortController: AbortController | null = null;
   private isInterrupted: boolean = false;
   private rateLimit?: RateLimit;
+  private reasoningEffort: string | null = null;
 
   private constructor(
     model: string,
@@ -50,6 +52,7 @@ export class Agent {
     this.temperature = temperature;
     this.configManager = new ConfigManager();
     this.proxyOverride = proxyOverride;
+    this.reasoningEffort = this.loadReasoningEffort();
     
     // Set debug mode
     debugEnabled = debug || false;
@@ -223,6 +226,7 @@ When asked about your identity, you should identify yourself as a coding assista
 
   public setModel(model: string): void {
     this.model = model;
+    this.reasoningEffort = this.loadReasoningEffort();
     // Save as default model
     this.configManager.setDefaultModel(model);
     // Update system message to reflect new model
@@ -237,6 +241,24 @@ When asked about your identity, you should identify yourself as a coding assista
 
   public getCurrentModel(): string {
     return this.model;
+  }
+
+  // A saved value the current model no longer accepts is ignored rather than sent.
+  private loadReasoningEffort(): string | null {
+    const saved = this.configManager.getReasoningEffort(this.model);
+    return saved !== null && getEfforts(this.model).includes(saved) ? saved : null;
+  }
+
+  public getReasoningEffort(): string | null {
+    return this.reasoningEffort;
+  }
+
+  public setReasoningEffort(effort: string | null): void {
+    if (effort !== null && !getEfforts(this.model).includes(effort)) {
+      throw new Error(`${this.model} does not accept reasoning effort "${effort}"`);
+    }
+    this.reasoningEffort = effort;
+    this.configManager.setReasoningEffort(this.model, effort);
   }
 
   public getRateLimit(): RateLimit | undefined {
@@ -323,7 +345,8 @@ When asked about your identity, you should identify yourself as a coding assista
             tool_choice: 'auto' as const,
             temperature: this.temperature,
             max_tokens: 8000,
-            stream: false as const
+            stream: false as const,
+            ...this.reasoningEffortParam(),
           };
           
           // Log equivalent curl command
@@ -343,7 +366,8 @@ When asked about your identity, you should identify yourself as a coding assista
             tool_choice: 'auto',
             temperature: this.temperature,
             max_tokens: 8000,
-            stream: false
+            stream: false,
+            ...this.reasoningEffortParam(),
           }, {
             signal: this.currentAbortController.signal
           }).withResponse();
@@ -543,6 +567,11 @@ When asked about your identity, you should identify yourself as a coding assista
         }
       }
     }
+  }
+
+  // groq-sdk 0.27 types reasoning_effort as 'none' | 'default' only; the API accepts more per model.
+  private reasoningEffortParam(): { reasoning_effort?: 'none' | 'default' } {
+    return this.reasoningEffort === null ? {} : { reasoning_effort: this.reasoningEffort as 'none' | 'default' };
   }
 
   private async executeToolCall(toolCall: any): Promise<Record<string, any>> {
