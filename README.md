@@ -196,7 +196,7 @@ Each command runs through the shell in the session's working directory and recei
 |---|---|
 | `clear` | `/clear` ends the session and starts a new one |
 | `prompt_input_exit` | `/exit`, `exit` or Ctrl+C |
-| `other` | The process receives SIGHUP (the terminal is closed) or SIGTERM |
+| `other` | A `--print` run finishes, or the process receives SIGHUP (the terminal is closed) or SIGTERM |
 
 `matcher` follows Claude Code's rules: omitted, `""` or `"*"` matches every reason; a value made only of letters, digits, `_`, `-`, spaces, `,` and `|` lists exact reasons separated by `|` or `,`; anything else is an unanchored regular expression. Output is discarded, and a command still running after `timeout` seconds (default 1.5, at most 60) is killed, so a hook with more to do should run that part in the background.
 
