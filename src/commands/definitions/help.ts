@@ -20,6 +20,7 @@ Navigation:
 - Press Enter to execute the selected command
 
 Keyboard Shortcuts:
+- Shift+Enter / Option+Enter / Ctrl+J / \\ then Enter - Insert a newline
 - Esc - Clear input box / Interrupt processing / Reject tool approval
 - Shift+Tab - Toggle auto-approval for editing tools
 - Ctrl+C - Exit the application (or type /exit or exit)

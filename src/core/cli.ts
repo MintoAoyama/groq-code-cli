@@ -51,7 +51,8 @@ async function startChat(
       model: agent.getCurrentModel(),
       cwd: shortenHome(process.cwd()),
     }));
-    render(React.createElement(App, { agent }));
+    // Without the kitty keyboard protocol, Shift+Enter arrives as plain Enter.
+    render(React.createElement(App, { agent }), { kittyKeyboard: { mode: 'auto' } });
   } catch (error) {
     console.log(chalk.red(`Error initializing agent: ${error}`));
     process.exit(1);
