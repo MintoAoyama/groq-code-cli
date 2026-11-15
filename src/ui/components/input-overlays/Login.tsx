@@ -23,7 +23,7 @@ export default function Login({ onSubmit, onCancel }: LoginProps) {
       return;
     }
 
-    if (key.backspace || key.delete) {
+    if (key.backspace) {
       setApiKey(prev => prev.slice(0, -1));
       return;
     }
