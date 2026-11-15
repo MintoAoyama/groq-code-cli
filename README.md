@@ -147,6 +147,22 @@ export HTTPS_PROXY=socks5://proxy:1080
 
 Priority: `HTTPS_PROXY` > `HTTP_PROXY`
 
+### Session Transcripts
+
+Each session is saved as JSONL to `~/.groq/projects/<project>/<session-id>.jsonl`, where `<project>` is the working directory with every non-alphanumeric character replaced by `-`. The layout follows Claude Code's transcripts in `~/.claude/projects/`, so tools that read those, such as Markdown exporters, can read these too. Every entry carries `"agent": "groq-code-cli"` to tell them apart. `/clear` starts a new session file, and each `--print` run is a session of its own.
+
+The file is created on the first message and is readable by the owner only. It holds everything sent to and returned by tools, including file contents and command output.
+
+Transcripts last written more than 30 days ago are deleted at startup. To change the period, set `cleanupPeriodDays` (an integer of at least 1) in `~/.groq/local-settings.json`:
+
+```json
+{
+  "cleanupPeriodDays": 60
+}
+```
+
+If the file cannot be read or the value is invalid, nothing is deleted.
+
 ### Available Commands
 - `/help` - Show help and available commands
 - `/login` - Login with your credentials
@@ -240,6 +256,7 @@ groq-code-cli/
 │       ├── proxy-config.ts     # Proxy resolution
 │       ├── replies.ts          # Reply and code block extraction for /copy
 │       ├── status.ts           # Status line data (git, rate limits, formatting)
+│       ├── transcript.ts       # Session transcripts and their cleanup
 │       └── version.ts          # Version string with build info
 ├── docs/                   
 ├── scripts/                    # Build helpers

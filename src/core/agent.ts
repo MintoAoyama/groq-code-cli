@@ -10,6 +10,8 @@ import { getProxyAgent, getProxyInfo } from '../utils/proxy-config.js';
 import { parseRateLimit, type RateLimit } from '../utils/status.js';
 import { DEFAULT_MODEL, getEfforts, getSelectableModels, isAvailableModel, setLiveModels } from '../utils/models.js';
 import { formatInstructionMessage, getInstructionDirs, loadInstructionFiles } from '../utils/instructions.js';
+import { TranscriptWriter } from '../utils/transcript.js';
+import { getVersion } from '../utils/version.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -42,6 +44,7 @@ export class Agent {
   private isInterrupted: boolean = false;
   private rateLimit?: RateLimit;
   private reasoningEffort: string | null = null;
+  private transcript: TranscriptWriter;
 
   private constructor(
     model: string,
@@ -53,6 +56,7 @@ export class Agent {
     this.temperature = temperature;
     this.configManager = new ConfigManager();
     this.reasoningEffort = this.loadReasoningEffort();
+    this.transcript = new TranscriptWriter({ version: getVersion() });
     
     // Set debug mode
     debugEnabled = debug || false;
@@ -282,6 +286,8 @@ When asked about your identity, you should identify yourself as a coding assista
   public clearHistory(): void {
     // Reset messages to only contain system messages
     this.messages = this.messages.filter(msg => msg.role === 'system');
+    // Like Claude Code's /clear, the rest of the conversation is a new session.
+    this.transcript = new TranscriptWriter({ version: getVersion() });
   }
 
   public setModel(model: string): void {
@@ -356,6 +362,7 @@ When asked about your identity, you should identify yourself as a coding assista
 
     // Add user message
     this.messages.push({ role: 'user', content: userInput });
+    this.transcript.write({ role: 'user', content: userInput });
 
     const maxIterations = 50;
     let iteration = 0;
@@ -458,6 +465,7 @@ When asked about your identity, you should identify yourself as a coding assista
             };
             assistantMsg.tool_calls = message.tool_calls;
             this.messages.push(assistantMsg);
+            this.transcript.write({ ...this.transcriptAssistant(assistantMsg.content), tool_calls: message.tool_calls });
 
             // Execute tool calls
             for (const toolCall of message.tool_calls) {
@@ -476,6 +484,7 @@ When asked about your identity, you should identify yourself as a coding assista
                 tool_call_id: toolCall.id,
                 content: JSON.stringify(result)
               });
+              this.transcript.write({ role: 'tool', tool_call_id: toolCall.id, content: JSON.stringify(result) });
 
               // Check if user rejected the tool, if so, stop processing
               if (result.userRejected) {
@@ -511,6 +520,7 @@ When asked about your identity, you should identify yourself as a coding assista
             role: 'assistant',
             content: content
           });
+          this.transcript.write(this.transcriptAssistant(content));
 
           debugLog('Final response added to conversation history, exiting chat loop');
           this.currentAbortController = null; // Clear abort controller
@@ -612,6 +622,10 @@ When asked about your identity, you should identify yourself as a coding assista
         }
       }
     }
+  }
+
+  private transcriptAssistant(content: string) {
+    return { role: 'assistant' as const, content, model: this.model, effort: this.reasoningEffort };
   }
 
   // groq-sdk's type lacks values some models accept, such as 'xhigh' for meta-models/muse-spark-open.
