@@ -165,7 +165,7 @@ If the file cannot be read or the value is invalid, nothing is deleted.
 
 ### Hooks
 
-Commands in `hooks.SessionEnd` of `~/.groq/local-settings.json` run when a session ends, in the same format as Claude Code's hooks:
+Commands in `hooks.SessionEnd` of `~/.groq/local-settings.json` run when a session ends, in the same format as Claude Code's hooks. Only the `SessionEnd` event and `command` hooks are supported:
 
 ```json
 {
@@ -198,7 +198,7 @@ Each command runs through the shell in the session's working directory and recei
 | `prompt_input_exit` | `/exit`, `exit` or Ctrl+C |
 | `other` | The process receives SIGHUP (the terminal is closed) or SIGTERM |
 
-`matcher` lists reasons separated by `|`; omitted, `""` or `"*"` matches all of them. Output is discarded, and a command still running after `timeout` seconds (default 1.5) is killed, so a hook with more to do should run that part in the background.
+`matcher` follows Claude Code's rules: omitted, `""` or `"*"` matches every reason; a value made only of letters, digits, `_`, `-`, spaces, `,` and `|` lists exact reasons separated by `|` or `,`; anything else is an unanchored regular expression. Output is discarded, and a command still running after `timeout` seconds (default 1.5, at most 60) is killed, so a hook with more to do should run that part in the background.
 
 ### Available Commands
 - `/help` - Show help and available commands

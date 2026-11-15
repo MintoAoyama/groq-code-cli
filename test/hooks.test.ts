@@ -20,10 +20,18 @@ test('matchesReason matches every reason without a matcher or with *', t => {
   t.true(matchesReason('*', 'prompt_input_exit'));
 });
 
-test('matchesReason matches |-separated reasons exactly', t => {
+test('matchesReason matches reasons separated by | or , exactly', t => {
   t.true(matchesReason('clear|prompt_input_exit', 'prompt_input_exit'));
+  t.true(matchesReason('clear, other', 'other'));
   t.false(matchesReason('clear|prompt_input_exit', 'other'));
   t.false(matchesReason('clea', 'clear'));
+});
+
+test('matchesReason treats other characters as an unanchored regex', t => {
+  t.true(matchesReason('cle.*', 'clear'));
+  t.true(matchesReason('in.ut', 'prompt_input_exit'));
+  t.false(matchesReason('^input', 'prompt_input_exit'));
+  t.false(matchesReason('(', 'clear'));
 });
 
 test('parseHookMatchers keeps only well-formed command hooks', t => {
