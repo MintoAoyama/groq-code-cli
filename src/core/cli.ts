@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Command } from 'commander';
+import { parseArgs } from 'node:util';
 import chalk from 'chalk';
 import { render } from 'ink';
 import React from 'react';
@@ -10,7 +10,17 @@ import { shortenHome } from '../utils/status.js';
 import { renderBanner } from '../ui/banner.js';
 import { DEFAULT_MODEL } from '../utils/models.js';
 
-const program = new Command();
+const HELP = `Usage: groq [options]
+
+Groq Code CLI
+
+Options:
+  -t, --temperature <temp>  Temperature for generation (default: 1)
+  -s, --system <message>    Custom system message
+  -d, --debug               Enable debug logging to debug-agent.log in current directory
+  -p, --proxy <url>         Proxy URL (e.g. http://proxy:8080 or socks5://proxy:1080)
+  -h, --help                Display help
+  -V, --version             Display version number`;
 
 /**
  * Start the interactive terminal chat UI by creating an Agent and rendering the Ink App.
@@ -58,21 +68,40 @@ async function startChat(
   }
 }
 
-program
-  .name('groq')
-  .description('Groq Code CLI')
-  .version(getVersion())
-  .option('-t, --temperature <temperature>', 'Temperature for generation', parseFloat, 1.0)
-  .option('-s, --system <message>', 'Custom system message')
-  .option('-d, --debug', 'Enable debug logging to debug-agent.log in current directory')
-  .option('-p, --proxy <url>', 'Proxy URL (e.g. http://proxy:8080 or socks5://proxy:1080)')
-  .action(async (options) => {
-    await startChat(
-      options.temperature,
-      options.system || null,
-      options.debug,
-      options.proxy
-    );
-  });
+function fail(message: string): never {
+  console.error(`error: ${message}`);
+  console.error(`Run 'groq --help' for usage.`);
+  process.exit(1);
+}
 
-program.parse();
+function parseOptions() {
+  try {
+    return parseArgs({
+      options: {
+        temperature: { type: 'string', short: 't', default: '1' },
+        system: { type: 'string', short: 's' },
+        debug: { type: 'boolean', short: 'd' },
+        proxy: { type: 'string', short: 'p' },
+        help: { type: 'boolean', short: 'h' },
+        version: { type: 'boolean', short: 'V' },
+      },
+    }).values;
+  } catch (error) {
+    // Unknown options and stray positional arguments throw.
+    fail(error instanceof Error ? error.message : String(error));
+  }
+}
+
+const values = parseOptions();
+
+if (values.help) {
+  console.log(HELP);
+} else if (values.version) {
+  console.log(getVersion());
+} else {
+  const temperature = parseFloat(values.temperature);
+  if (Number.isNaN(temperature)) {
+    fail(`temperature must be a number, got '${values.temperature}'`);
+  }
+  await startChat(temperature, values.system || null, values.debug, values.proxy);
+}
