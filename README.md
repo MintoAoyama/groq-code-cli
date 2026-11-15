@@ -108,6 +108,15 @@ You can also set your API key for your current directory via environment variabl
 export GROQ_API_KEY=your_api_key_here
 ```
 
+### Instruction Files
+
+At startup, `AGENTS.md` and `CLAUDE.md` are added to the conversation as instructions, from these directories in order:
+
+1. `~/.groq/` - instructions for every project, such as the language to reply in
+2. The current directory - instructions for the project
+
+Later files take precedence. A `CLAUDE.md` symlinked to `AGENTS.md` is read once. The instructions apply with `--system` too.
+
 ### Proxy Configuration
 
 Supports HTTP/HTTPS/SOCKS5 proxies via CLI flag or environment variables:

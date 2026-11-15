@@ -9,6 +9,7 @@ import { ConfigManager } from '../utils/local-settings.js';
 import { getProxyAgent, getProxyInfo } from '../utils/proxy-config.js';
 import { parseRateLimit, type RateLimit } from '../utils/status.js';
 import { DEFAULT_MODEL, getEfforts, getSelectableModels, isAvailableModel, setLiveModels } from '../utils/models.js';
+import { formatInstructionMessage, getInstructionDirs, loadInstructionFiles } from '../utils/instructions.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -69,10 +70,21 @@ export class Agent {
     // Add system message to conversation
     this.messages.push({ role: 'system', content: this.systemMessage });
 
+    const baseDir = process.env.GROQ_CONTEXT_DIR || process.cwd();
+
+    try {
+      for (const file of loadInstructionFiles(getInstructionDirs(baseDir))) {
+        this.messages.push({ role: 'system', content: formatInstructionMessage(file) });
+      }
+    } catch (error) {
+      if (debugEnabled) {
+        debugLog('Failed to load instruction files:', error);
+      }
+    }
+
     // Load project context if available
     try {
       const explicitContextFile = process.env.GROQ_CONTEXT_FILE;
-      const baseDir = process.env.GROQ_CONTEXT_DIR || process.cwd();
       const contextPath = explicitContextFile || path.join(baseDir, '.groq', 'context.md');
       const contextLimit = parseInt(process.env.GROQ_CONTEXT_LIMIT || '20000', 10);
       if (fs.existsSync(contextPath)) {

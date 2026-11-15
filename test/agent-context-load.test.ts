@@ -42,6 +42,7 @@ test('Agent handles missing context gracefully', async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'groq-nocontext-'));
   const original = { ...process.env };
   (process.env as any).GROQ_CONTEXT_DIR = dir;
+  (process.env as any).HOME = dir;
   try {
     const agent = await Agent.create('test-model', 1.0, null, false);
     const msgs = (agent as any).messages as Array<{ role: string; content: string }>;
