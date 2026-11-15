@@ -10,6 +10,8 @@ import { getVersion } from '../utils/version.js';
 import { shortenHome } from '../utils/status.js';
 import { renderBanner } from '../ui/banner.js';
 import { DEFAULT_MODEL } from '../utils/models.js';
+import { ConfigManager } from '../utils/local-settings.js';
+import { cleanupTranscripts, DEFAULT_CLEANUP_PERIOD_DAYS } from '../utils/transcript.js';
 
 const HELP = `Usage: groq [options] [prompt]
 
@@ -92,6 +94,14 @@ if (values.help) {
   }
   // Unquoted words are joined, so `groq explain this repo` works without quotes.
   const prompt = positionals.join(' ').trim();
+
+  const cleanupPeriodDays = new ConfigManager().getCleanupPeriodDays(DEFAULT_CLEANUP_PERIOD_DAYS);
+  if (cleanupPeriodDays === null) {
+    // stderr, so a warning never ends up in the piped output of --print.
+    console.error(chalk.yellow('Skipped deleting old transcripts: ~/.groq/local-settings.json could not be read, or its cleanupPeriodDays is not an integer of at least 1'));
+  } else {
+    cleanupTranscripts(cleanupPeriodDays);
+  }
 
   let agent: Agent;
   try {

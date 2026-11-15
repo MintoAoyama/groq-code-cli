@@ -8,6 +8,8 @@ interface Config {
   groqProxy?: string;
   // Keyed by model, since each model accepts its own set of values.
   reasoningEfforts?: Record<string, string>;
+  // Days to keep session transcripts in ~/.groq/projects; at least 1.
+  cleanupPeriodDays?: number;
 }
 
 const CONFIG_DIR = '.groq'; // In home directory
@@ -16,8 +18,7 @@ const CONFIG_FILE = 'local-settings.json';
 export class ConfigManager {
   private configPath: string;
 
-  constructor() {
-    const homeDir = os.homedir();
+  constructor(homeDir: string = os.homedir()) {
     this.configPath = path.join(homeDir, CONFIG_DIR, CONFIG_FILE);
   }
 
@@ -123,6 +124,22 @@ export class ConfigManager {
     } catch (error) {
       throw new Error(`Failed to save reasoning effort: ${error}`);
     }
+  }
+
+  /**
+   * @returns The configured retention period, the default when unset, or null when the value is invalid
+   * or the config file cannot be read, so that a broken file never shortens the retention period.
+   */
+  public getCleanupPeriodDays(defaultDays: number): number | null {
+    let config: Config;
+    try {
+      config = fs.existsSync(this.configPath) ? JSON.parse(fs.readFileSync(this.configPath, 'utf8')) : {};
+    } catch {
+      return null;
+    }
+    const value = config.cleanupPeriodDays;
+    if (value === undefined) return defaultDays;
+    return Number.isInteger(value) && value >= 1 ? value : null;
   }
 
   public getProxy(): string | null {
