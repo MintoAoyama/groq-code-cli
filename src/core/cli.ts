@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
+import os from 'node:os';
 import chalk from 'chalk';
 import { render } from 'ink';
 import React from 'react';
@@ -37,19 +38,20 @@ Proxy:
 /**
  * Start the interactive terminal chat UI by creating an Agent and rendering the Ink App.
  *
- * Prints the CLI banner, then renders the React/Ink UI. On initialization errors the process exits with code 1.
+ * Prints the CLI banner, then renders the React/Ink UI and resolves when the UI exits.
  *
  * @param agent - The agent to chat with.
  * @param initialPrompt - Optional message to send as soon as the chat starts.
  */
-function startChat(agent: Agent, initialPrompt?: string): void {
+async function startChat(agent: Agent, initialPrompt?: string): Promise<void> {
   console.log(renderBanner({
     version: getVersion(),
     model: agent.getCurrentModel(),
     cwd: shortenHome(process.cwd()),
   }));
   // Without the kitty keyboard protocol, Shift+Enter arrives as plain Enter.
-  render(React.createElement(App, { agent, initialPrompt }), { kittyKeyboard: { mode: 'auto' } });
+  const instance = render(React.createElement(App, { agent, initialPrompt }), { kittyKeyboard: { mode: 'auto' } });
+  await instance.waitUntilExit();
 }
 
 function fail(message: string): never {
@@ -112,13 +114,27 @@ if (values.help) {
     process.exit(1);
   }
 
+  // Closing the terminal or killing the process skips the normal exit, so end the session here.
+  // The listener must stay registered (not `once`): ink's signal-exit re-raises the signal,
+  // killing the process before the hooks finish, when it finds no other listener.
+  let signaled = false;
+  for (const signal of ['SIGHUP', 'SIGTERM'] as const) {
+    process.on(signal, () => {
+      if (signaled) return;
+      signaled = true;
+      agent.endSession('other').finally(() => process.exit(128 + os.constants.signals[signal]));
+    });
+  }
+
   if (values.print) {
     // `cat file | groq -p "summarize"` sends the prompt followed by the file.
     const piped = process.stdin.isTTY ? '' : (await readStdin()).trim();
     const message = [prompt, piped].filter(Boolean).join('\n\n');
     if (!message) fail('--print needs a prompt, as an argument or on stdin');
     process.exitCode = await runHeadless(agent, message, { allowEdits: values['allow-edits'] });
+    await agent.endSession('other');
   } else {
-    startChat(agent, prompt || undefined);
+    await startChat(agent, prompt || undefined);
+    await agent.endSession('prompt_input_exit');
   }
 }

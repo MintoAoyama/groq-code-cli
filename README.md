@@ -163,6 +163,43 @@ Transcripts last written more than 30 days ago are deleted at startup. To change
 
 If the file cannot be read or the value is invalid, nothing is deleted.
 
+### Hooks
+
+Commands in `hooks.SessionEnd` of `~/.groq/local-settings.json` run when a session ends, in the same format as Claude Code's hooks. Only the `SessionEnd` event and `command` hooks are supported:
+
+```json
+{
+  "hooks": {
+    "SessionEnd": [
+      {
+        "matcher": "clear|prompt_input_exit",
+        "hooks": [{ "type": "command", "command": "~/bin/on-session-end.sh", "timeout": 1.5 }]
+      }
+    ]
+  }
+}
+```
+
+Each command runs through the shell in the session's working directory and receives this JSON on stdin:
+
+```json
+{
+  "session_id": "...",
+  "transcript_path": "/Users/you/.groq/projects/<project>/<session-id>.jsonl",
+  "cwd": "...",
+  "hook_event_name": "SessionEnd",
+  "reason": "prompt_input_exit"
+}
+```
+
+| `reason` | When |
+|---|---|
+| `clear` | `/clear` ends the session and starts a new one |
+| `prompt_input_exit` | `/exit`, `exit` or Ctrl+C |
+| `other` | A `--print` run finishes, or the process receives SIGHUP (the terminal is closed) or SIGTERM |
+
+`matcher` follows Claude Code's rules: omitted, `""` or `"*"` matches every reason; a value made only of letters, digits, `_`, `-`, spaces, `,` and `|` lists exact reasons separated by `|` or `,`; anything else is an unanchored regular expression. Output is discarded, and a command still running after `timeout` seconds (default 1.5, at most 60) is killed, so a hook with more to do should run that part in the background.
+
 ### Available Commands
 - `/help` - Show help and available commands
 - `/login` - Login with your credentials
@@ -250,6 +287,7 @@ groq-code-cli/
 │       ├── constants.ts        # Application constants
 │       ├── context.ts          # Project context generation for /init
 │       ├── file-ops.ts         # File system operations
+│       ├── hooks.ts            # SessionEnd hooks
 │       ├── local-settings.ts   # Local configuration management
 │       ├── markdown.ts         # Markdown processing utilities
 │       ├── models.ts           # Models from the API, with names, prices and reasoning efforts

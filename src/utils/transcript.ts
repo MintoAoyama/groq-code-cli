@@ -57,7 +57,7 @@ function currentGitBranch(cwd: string): string | undefined {
 export class TranscriptWriter {
   readonly sessionId: string;
   readonly filePath: string;
-  private readonly cwd: string;
+  readonly cwd: string;
   private readonly version: string;
   private parentUuid: string | null = null;
 

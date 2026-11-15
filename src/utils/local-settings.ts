@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { parseHookMatchers, type HooksConfig } from './hooks.js';
 
 interface Config {
   groqApiKey?: string;
@@ -10,6 +11,7 @@ interface Config {
   reasoningEfforts?: Record<string, string>;
   // Days to keep session transcripts in ~/.groq/projects; at least 1.
   cleanupPeriodDays?: number;
+  hooks?: HooksConfig;
 }
 
 const CONFIG_DIR = '.groq'; // In home directory
@@ -140,6 +142,10 @@ export class ConfigManager {
     const value = config.cleanupPeriodDays;
     if (value === undefined) return defaultDays;
     return Number.isInteger(value) && value >= 1 ? value : null;
+  }
+
+  public getHooks(): HooksConfig {
+    return { SessionEnd: parseHookMatchers(this.readConfig().hooks?.SessionEnd) };
   }
 
   public getProxy(): string | null {
