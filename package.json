@@ -19,7 +19,6 @@
 	],
 	"dependencies": {
 		"chalk": "^5.4.1",
-		"commander": "^14.0.0",
 		"groq-sdk": "^1.0.0",
 		"ink": "^8.0.0",
 		"react": "^19.1.0",

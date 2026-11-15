@@ -80,12 +80,12 @@ groq
 groq [options]
 
 Options:
-  -t, --temperature <temp>      Temperature for generation (default: 1)
-  -s, --system <message>        Custom system message
-  -d, --debug                   Enable debug logging to debug-agent.log in current directory
-  -p, --proxy <url>             Proxy URL (e.g. http://proxy:8080 or socks5://proxy:1080)
-  -h, --help                    Display help
-  -V, --version                 Display version number
+  -t, --temperature <temp>  Temperature for generation (default: 1)
+  -s, --system <message>    Custom system message
+  -d, --debug               Enable debug logging to debug-agent.log in current directory
+  -p, --proxy <url>         Proxy URL (e.g. http://proxy:8080 or socks5://proxy:1080)
+  -h, --help                Display help
+  -V, --version             Display version number
 ```
 
 ### Authentication

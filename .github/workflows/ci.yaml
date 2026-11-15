@@ -33,6 +33,6 @@ jobs:
         run: npm audit signatures
       - run: npm run build
       - run: npm test
-      # Importing the entry point loads ink, commander, chalk and groq-sdk, which unit tests do not cover
+      # Importing the entry point loads ink, chalk and groq-sdk and parses the arguments, which unit tests do not cover
       - run: node dist/core/cli.js --version
       - run: node dist/core/cli.js --help
