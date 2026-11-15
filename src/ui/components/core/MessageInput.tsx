@@ -170,7 +170,16 @@ export default function MessageInput({
       return;
     }
 
-    if (key.backspace || key.delete) {
+    if (key.delete) {
+      if (cursorPosition < value.length) {
+        onChange(value.slice(0, cursorPosition) + value.slice(cursorPosition + 1));
+      }
+      setSelectedCommandIndex(0);
+      setHistoryIndex(-1);
+      return;
+    }
+
+    if (key.backspace) {
       if (cursorPosition > 0) {
         const length = backspaceLength(value.slice(0, cursorPosition));
         const newValue = value.slice(0, cursorPosition - length) + value.slice(cursorPosition);
