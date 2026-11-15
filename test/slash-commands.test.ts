@@ -118,8 +118,8 @@ test('/effort rejects a value the model does not accept', t => {
 });
 
 test('/effort tells when the model takes no effort', t => {
-  const { context, messages, set } = effortContext('moonshotai/kimi-k2-instruct');
+  const { context, messages, set } = effortContext('llama-3.3-70b-versatile');
   handleSlashCommand('/effort high', context);
   t.deepEqual(set, []);
-  t.is(messages[1].content, 'moonshotai/kimi-k2-instruct does not take a reasoning effort.');
+  t.is(messages[1].content, 'llama-3.3-70b-versatile does not take a reasoning effort.');
 });
