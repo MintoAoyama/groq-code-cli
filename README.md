@@ -72,12 +72,18 @@ npm install -g groq-code-cli@latest
 ```bash
 # Start chat session
 groq
+
+# Start chat session and send a first message
+groq "explain this repository"
 ```
 
 ### Command Line Options
 
 ```bash
-groq [options]
+groq [options] [prompt]
+
+Arguments:
+  prompt                    Message to send when the chat starts (put -- before one that starts with -)
 
 Options:
   -t, --temperature <temp>  Temperature for generation (default: 1)

@@ -10,9 +10,12 @@ import { shortenHome } from '../utils/status.js';
 import { renderBanner } from '../ui/banner.js';
 import { DEFAULT_MODEL } from '../utils/models.js';
 
-const HELP = `Usage: groq [options]
+const HELP = `Usage: groq [options] [prompt]
 
 Groq Code CLI
+
+Arguments:
+  prompt                    Message to send when the chat starts (put -- before one that starts with -)
 
 Options:
   -t, --temperature <temp>  Temperature for generation (default: 1)
@@ -33,12 +36,14 @@ Options:
  * @param system - Optional system message to seed the agent's context; pass `null` to use defaults.
  * @param debug - When true, enables debug logging for the agent.
  * @param proxy - Optional proxy URL to route requests through (e.g., `http://proxy:8080` or `socks5://proxy:1080`).
+ * @param initialPrompt - Optional message to send as soon as the chat starts.
  */
 async function startChat(
   temperature: number,
   system: string | null,
   debug?: boolean,
-  proxy?: string
+  proxy?: string,
+  initialPrompt?: string
 ): Promise<void> {
   // Validate proxy URL if provided
   if (proxy) {
@@ -62,7 +67,7 @@ async function startChat(
       cwd: shortenHome(process.cwd()),
     }));
     // Without the kitty keyboard protocol, Shift+Enter arrives as plain Enter.
-    render(React.createElement(App, { agent }), { kittyKeyboard: { mode: 'auto' } });
+    render(React.createElement(App, { agent, initialPrompt }), { kittyKeyboard: { mode: 'auto' } });
   } catch (error) {
     console.log(chalk.red(`Error initializing agent: ${error}`));
     process.exit(1);
@@ -78,6 +83,7 @@ function fail(message: string): never {
 function parseOptions() {
   try {
     return parseArgs({
+      allowPositionals: true,
       options: {
         temperature: { type: 'string', short: 't', default: '1' },
         system: { type: 'string', short: 's' },
@@ -86,14 +92,14 @@ function parseOptions() {
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'V' },
       },
-    }).values;
+    });
   } catch (error) {
-    // Unknown options and stray positional arguments throw.
+    // Unknown options throw.
     fail(error instanceof Error ? error.message : String(error));
   }
 }
 
-const values = parseOptions();
+const { values, positionals } = parseOptions();
 
 if (values.help) {
   console.log(HELP);
@@ -104,5 +110,7 @@ if (values.help) {
   if (Number.isNaN(temperature)) {
     fail(`temperature must be a number, got '${values.temperature}'`);
   }
-  await startChat(temperature, values.system || null, values.debug, values.proxy);
+  // Unquoted words are joined, so `groq explain this repo` works without quotes.
+  const initialPrompt = positionals.join(' ').trim() || undefined;
+  await startChat(temperature, values.system || null, values.debug, values.proxy, initialPrompt);
 }

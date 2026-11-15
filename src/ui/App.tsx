@@ -5,9 +5,10 @@ import Chat from './components/core/Chat.js';
 
 interface AppProps {
   agent: Agent;
+  initialPrompt?: string;
 }
 
-export default function App({ agent }: AppProps) {
+export default function App({ agent, initialPrompt }: AppProps) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -17,7 +18,7 @@ export default function App({ agent }: AppProps) {
   return (
     <Box flexDirection="column" height="100%">
       {isReady ? (
-        <Chat agent={agent} />
+        <Chat agent={agent} initialPrompt={initialPrompt} />
       ) : (
         <Box justifyContent="center" alignItems="center" height="100%">
           <Text>Initializing agent...</Text>
