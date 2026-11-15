@@ -28,7 +28,6 @@ export class Agent {
   private sessionAutoApprove: boolean = false;
   private systemMessage: string;
   private configManager: ConfigManager;
-  private proxyOverride?: string;
   private onToolStart?: (name: string, args: Record<string, any>) => void;
   private onToolEnd?: (name: string, result: any) => void;
   private onToolApproval?: (toolName: string, toolArgs: Record<string, any>) => Promise<{ approved: boolean; autoApproveSession?: boolean }>;
@@ -47,13 +46,11 @@ export class Agent {
     model: string,
     temperature: number,
     systemMessage: string | null,
-    debug?: boolean,
-    proxyOverride?: string
+    debug?: boolean
   ) {
     this.model = model;
     this.temperature = temperature;
     this.configManager = new ConfigManager();
-    this.proxyOverride = proxyOverride;
     this.reasoningEffort = this.loadReasoningEffort();
     
     // Set debug mode
@@ -95,8 +92,7 @@ export class Agent {
     model: string,
     temperature: number,
     systemMessage: string | null,
-    debug?: boolean,
-    proxyOverride?: string
+    debug?: boolean
   ): Promise<Agent> {
     // Check for default model in config if model not explicitly provided
     const configManager = new ConfigManager();
@@ -107,8 +103,7 @@ export class Agent {
       selectedModel,
       temperature,
       systemMessage,
-      debug,
-      proxyOverride
+      debug
     );
     return agent;
   }
@@ -192,9 +187,9 @@ When asked about your identity, you should identify yourself as a coding assista
     debugLog('API key provided:', apiKey ? `${apiKey.substring(0, 8)}...` : 'empty');
     this.apiKey = apiKey;
     
-    // Get proxy configuration (with override if provided)
-    const proxyAgent = getProxyAgent(this.proxyOverride);
-    const proxyInfo = getProxyInfo(this.proxyOverride);
+    // Get proxy configuration from the environment
+    const proxyAgent = getProxyAgent();
+    const proxyInfo = getProxyInfo();
     
     if (proxyInfo.enabled) {
       debugLog(`Using ${proxyInfo.type} proxy: ${proxyInfo.url}`);

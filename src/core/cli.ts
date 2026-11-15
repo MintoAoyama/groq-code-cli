@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { render } from 'ink';
 import React from 'react';
 import { Agent } from './agent.js';
+import { readStdin, runHeadless } from './headless.js';
 import App from '../ui/App.js';
 import { getVersion } from '../utils/version.js';
 import { shortenHome } from '../utils/status.js';
@@ -18,60 +19,35 @@ Arguments:
   prompt                    Message to send when the chat starts (put -- before one that starts with -)
 
 Options:
+  -p, --print               Answer the prompt without the chat UI, print the reply and exit.
+                            Piped input is appended to the prompt
+  --allow-edits             With --print, let the model create and edit files without asking.
+                            Commands and deletions are always refused
   -t, --temperature <temp>  Temperature for generation (default: 1)
   -s, --system <message>    Custom system message
   -d, --debug               Enable debug logging to debug-agent.log in current directory
-  -p, --proxy <url>         Proxy URL (e.g. http://proxy:8080 or socks5://proxy:1080)
   -h, --help                Display help
-  -V, --version             Display version number`;
+  -V, --version             Display version number
+
+Proxy:
+  Set HTTPS_PROXY or HTTP_PROXY (e.g. http://proxy:8080 or socks5://proxy:1080)`;
 
 /**
  * Start the interactive terminal chat UI by creating an Agent and rendering the Ink App.
  *
- * Initializes an AI agent with the given temperature, optional system prompt, debug mode, and optional proxy,
- * validates the proxy URL (if provided), prints the CLI banner, then renders the React/Ink UI. On invalid proxy
- * or on initialization errors the process exits with code 1.
+ * Prints the CLI banner, then renders the React/Ink UI. On initialization errors the process exits with code 1.
  *
- * @param temperature - Sampling temperature used for model generation.
- * @param system - Optional system message to seed the agent's context; pass `null` to use defaults.
- * @param debug - When true, enables debug logging for the agent.
- * @param proxy - Optional proxy URL to route requests through (e.g., `http://proxy:8080` or `socks5://proxy:1080`).
+ * @param agent - The agent to chat with.
  * @param initialPrompt - Optional message to send as soon as the chat starts.
  */
-async function startChat(
-  temperature: number,
-  system: string | null,
-  debug?: boolean,
-  proxy?: string,
-  initialPrompt?: string
-): Promise<void> {
-  // Validate proxy URL if provided
-  if (proxy) {
-    try {
-      new URL(proxy);
-    } catch (error) {
-      // Don't display the actual URL in case it contains credentials
-      console.log(chalk.red('Invalid proxy URL provided'));
-      console.log(chalk.yellow('Proxy URL must be a valid URL (e.g., http://proxy:8080 or socks5://proxy:1080)'));
-      process.exit(1);
-    }
-  }
-  
-  try {
-    // Create agent (API key will be checked on first message)
-    const agent = await Agent.create(DEFAULT_MODEL, temperature, system, debug, proxy);
-
-    console.log(renderBanner({
-      version: getVersion(),
-      model: agent.getCurrentModel(),
-      cwd: shortenHome(process.cwd()),
-    }));
-    // Without the kitty keyboard protocol, Shift+Enter arrives as plain Enter.
-    render(React.createElement(App, { agent, initialPrompt }), { kittyKeyboard: { mode: 'auto' } });
-  } catch (error) {
-    console.log(chalk.red(`Error initializing agent: ${error}`));
-    process.exit(1);
-  }
+function startChat(agent: Agent, initialPrompt?: string): void {
+  console.log(renderBanner({
+    version: getVersion(),
+    model: agent.getCurrentModel(),
+    cwd: shortenHome(process.cwd()),
+  }));
+  // Without the kitty keyboard protocol, Shift+Enter arrives as plain Enter.
+  render(React.createElement(App, { agent, initialPrompt }), { kittyKeyboard: { mode: 'auto' } });
 }
 
 function fail(message: string): never {
@@ -85,10 +61,11 @@ function parseOptions() {
     return parseArgs({
       allowPositionals: true,
       options: {
+        print: { type: 'boolean', short: 'p' },
+        'allow-edits': { type: 'boolean' },
         temperature: { type: 'string', short: 't', default: '1' },
         system: { type: 'string', short: 's' },
         debug: { type: 'boolean', short: 'd' },
-        proxy: { type: 'string', short: 'p' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'V' },
       },
@@ -110,7 +87,28 @@ if (values.help) {
   if (Number.isNaN(temperature)) {
     fail(`temperature must be a number, got '${values.temperature}'`);
   }
+  if (values['allow-edits'] && !values.print) {
+    fail('--allow-edits only works with --print');
+  }
   // Unquoted words are joined, so `groq explain this repo` works without quotes.
-  const initialPrompt = positionals.join(' ').trim() || undefined;
-  await startChat(temperature, values.system || null, values.debug, values.proxy, initialPrompt);
+  const prompt = positionals.join(' ').trim();
+
+  let agent: Agent;
+  try {
+    // API key will be checked on first message
+    agent = await Agent.create(DEFAULT_MODEL, temperature, values.system || null, values.debug);
+  } catch (error) {
+    console.log(chalk.red(`Error initializing agent: ${error}`));
+    process.exit(1);
+  }
+
+  if (values.print) {
+    // `cat file | groq -p "summarize"` sends the prompt followed by the file.
+    const piped = process.stdin.isTTY ? '' : (await readStdin()).trim();
+    const message = [prompt, piped].filter(Boolean).join('\n\n');
+    if (!message) fail('--print needs a prompt, as an argument or on stdin');
+    process.exitCode = await runHeadless(agent, message, { allowEdits: values['allow-edits'] });
+  } else {
+    startChat(agent, prompt || undefined);
+  }
 }
