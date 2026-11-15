@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput, usePaste } from 'ink';
 import { MUTED } from '../../theme.js';
 import { getCommandNames } from '../../../commands/index.js';
@@ -13,21 +13,45 @@ interface MessageInputProps {
   userMessageHistory?: string[];
 }
 
-export default function MessageInput({ 
-  value, 
-  onChange, 
-  onSubmit, 
+// Keys that arrive in one stdin chunk are handled before React re-renders, so handlers
+// read the latest state from the ref instead of the values captured at render time.
+function useLatestState<T>(initial: T) {
+  const [state, setState] = useState(initial);
+  const ref = useRef(state);
+  const set = (next: T) => {
+    ref.current = next;
+    setState(next);
+  };
+  return [state, ref, set] as const;
+}
+
+const filterCommands = (value: string) => {
+  const searchTerm = value.slice(1).toLowerCase();
+  return getCommandNames().filter(cmd => cmd.toLowerCase().includes(searchTerm));
+};
+
+export default function MessageInput({
+  value,
+  onChange,
+  onSubmit,
   placeholder = "... (Esc to clear, /exit or Ctrl+C to exit)",
   userMessageHistory = []
 }: MessageInputProps) {
-  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [draftMessage, setDraftMessage] = useState('');
-  const [cursorPosition, setCursorPosition] = useState(value.length);
-  const [pastes, setPastes] = useState<Map<number, string>>(new Map());
+  const [selectedCommandIndex, selectedCommandIndexRef, setSelectedCommandIndex] = useLatestState(0);
+  const [, historyIndexRef, setHistoryIndex] = useLatestState(-1);
+  const [, draftMessageRef, setDraftMessage] = useLatestState('');
+  const [cursorPosition, cursorRef, setCursorPosition] = useLatestState(value.length);
+  const pastesRef = useRef(new Map<number, string>());
 
-  const isSlashCommand = value.startsWith('/');
-  const showSlashCommands = isSlashCommand;
+  // The parent also changes the value (clearing it on Esc or after sending), so follow the prop.
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const setValue = (next: string) => {
+    valueRef.current = next;
+    onChange(next);
+  };
+
+  const showSlashCommands = value.startsWith('/');
 
   // Keep cursor position in bounds and reset to end when value is cleared
   useEffect(() => {
@@ -36,16 +60,17 @@ export default function MessageInput({
       // Clear draft and reset history when input is cleared (after sending message)
       setDraftMessage('');
       setHistoryIndex(-1);
-      setPastes(new Map());
-    } else if (cursorPosition > value.length) {
+      pastesRef.current = new Map();
+    } else if (cursorRef.current > value.length) {
       setCursorPosition(value.length);
     }
   }, [value]);
 
   const insertText = (text: string) => {
-    const newValue = value.slice(0, cursorPosition) + text + value.slice(cursorPosition);
-    onChange(newValue);
-    setCursorPosition(prev => prev + text.length);
+    const current = valueRef.current;
+    const cursor = cursorRef.current;
+    setValue(current.slice(0, cursor) + text + current.slice(cursor));
+    setCursorPosition(cursor + text.length);
     setSelectedCommandIndex(0);
     setHistoryIndex(-1);
   };
@@ -56,23 +81,28 @@ export default function MessageInput({
       insertText(text);
       return;
     }
-    const id = pastes.size + 1;
-    setPastes(prev => new Map(prev).set(id, text));
+    const id = pastesRef.current.size + 1;
+    pastesRef.current = new Map(pastesRef.current).set(id, text);
     insertText(pastePlaceholder(id, lineCount));
   };
 
-  const submit = (text: string) => {
-    onSubmit(expandPastes(text, pastes));
+  const showHistory = (index: number) => {
+    setHistoryIndex(index);
+    const message = index === -1 ? draftMessageRef.current : userMessageHistory[userMessageHistory.length - 1 - index];
+    setValue(message);
+    setCursorPosition(message.length);
   };
 
   usePaste(text => insertPaste(text.replace(/\r\n?/g, '\n')));
 
-  const lineStart = value.lastIndexOf('\n', cursorPosition - 1) + 1;
-  const nextNewline = value.indexOf('\n', cursorPosition);
-  const isFirstLine = lineStart === 0;
-  const isLastLine = nextNewline === -1;
-
   useInput((input, key) => {
+    const value = valueRef.current;
+    const cursorPosition = cursorRef.current;
+    const historyIndex = historyIndexRef.current;
+    const isSlashCommand = value.startsWith('/');
+    const lineStart = value.lastIndexOf('\n', cursorPosition - 1) + 1;
+    const nextNewline = value.indexOf('\n', cursorPosition);
+
     // Shift+Enter is only distinguishable from Enter under the kitty keyboard protocol;
     // Option+Enter, Ctrl+J and a trailing backslash cover terminals without it.
     if ((key.return && (key.shift || key.meta)) || (key.ctrl && input === 'j') || input === '\n') {
@@ -82,29 +112,25 @@ export default function MessageInput({
 
     if (key.return) {
       if (value[cursorPosition - 1] === '\\') {
-        onChange(value.slice(0, cursorPosition - 1) + '\n' + value.slice(cursorPosition));
+        setValue(value.slice(0, cursorPosition - 1) + '\n' + value.slice(cursorPosition));
         return;
       }
       if (isSlashCommand) {
         // Auto-complete to selected command
-        const searchTerm = value.slice(1).toLowerCase();
-        const commands = getCommandNames();
-        const filteredCommands = commands.filter(cmd => 
-          cmd.toLowerCase().includes(searchTerm)
-        );
+        const filteredCommands = filterCommands(value);
         if (filteredCommands.length > 0) {
-          onSubmit('/' + (filteredCommands[selectedCommandIndex] || filteredCommands[0]));
+          onSubmit('/' + (filteredCommands[selectedCommandIndexRef.current] || filteredCommands[0]));
           return;
         }
       }
-      submit(value);
+      onSubmit(expandPastes(value, pastesRef.current));
       return;
     }
 
     if (key.upArrow) {
-      if (showSlashCommands) {
-        setSelectedCommandIndex(prev => Math.max(0, prev - 1));
-      } else if (!isFirstLine) {
+      if (isSlashCommand) {
+        setSelectedCommandIndex(Math.max(0, selectedCommandIndexRef.current - 1));
+      } else if (lineStart > 0) {
         const prevLineStart = value.lastIndexOf('\n', lineStart - 2) + 1;
         const column = cursorPosition - lineStart;
         setCursorPosition(Math.min(prevLineStart + column, lineStart - 1));
@@ -116,10 +142,7 @@ export default function MessageInput({
         // Navigate to message history when at 0th position
         const newIndex = Math.min(historyIndex + 1, userMessageHistory.length - 1);
         if (newIndex !== historyIndex) {
-          setHistoryIndex(newIndex);
-          const historicalMessage = userMessageHistory[userMessageHistory.length - 1 - newIndex];
-          onChange(historicalMessage);
-          setCursorPosition(historicalMessage.length);
+          showHistory(newIndex);
         }
       } else {
         setCursorPosition(0);
@@ -128,32 +151,17 @@ export default function MessageInput({
     }
 
     if (key.downArrow) {
-      if (showSlashCommands) {
-        const searchTerm = value.slice(1).toLowerCase();
-        const commands = getCommandNames();
-        const filteredCommands = commands.filter(cmd => 
-          cmd.toLowerCase().includes(searchTerm)
-        );
-        setSelectedCommandIndex(prev => Math.min(filteredCommands.length - 1, prev + 1));
-      } else if (!isLastLine) {
+      if (isSlashCommand) {
+        const filteredCommands = filterCommands(value);
+        setSelectedCommandIndex(Math.min(filteredCommands.length - 1, selectedCommandIndexRef.current + 1));
+      } else if (nextNewline !== -1) {
         const followingNewline = value.indexOf('\n', nextNewline + 1);
         const nextLineEnd = followingNewline === -1 ? value.length : followingNewline;
         const column = cursorPosition - lineStart;
         setCursorPosition(Math.min(nextNewline + 1 + column, nextLineEnd));
       } else if (cursorPosition === value.length && historyIndex >= 0) {
-        // Navigate through message history when at last position
-        const newIndex = historyIndex - 1;
-        if (newIndex >= 0) {
-          setHistoryIndex(newIndex);
-          const historicalMessage = userMessageHistory[userMessageHistory.length - 1 - newIndex];
-          onChange(historicalMessage);
-          setCursorPosition(historicalMessage.length);
-        } else {
-          // Return to draft message (current input)
-          setHistoryIndex(-1);
-          onChange(draftMessage);
-          setCursorPosition(draftMessage.length);
-        }
+        // Navigate through message history when at last position; -1 returns to the draft
+        showHistory(historyIndex - 1);
       } else {
         setCursorPosition(value.length);
       }
@@ -161,18 +169,18 @@ export default function MessageInput({
     }
 
     if (key.leftArrow) {
-      setCursorPosition(prev => Math.max(0, prev - 1));
+      setCursorPosition(Math.max(0, cursorPosition - 1));
       return;
     }
 
     if (key.rightArrow) {
-      setCursorPosition(prev => Math.min(value.length, prev + 1));
+      setCursorPosition(Math.min(value.length, cursorPosition + 1));
       return;
     }
 
     if (key.delete) {
       if (cursorPosition < value.length) {
-        onChange(value.slice(0, cursorPosition) + value.slice(cursorPosition + 1));
+        setValue(value.slice(0, cursorPosition) + value.slice(cursorPosition + 1));
       }
       setSelectedCommandIndex(0);
       setHistoryIndex(-1);
@@ -182,9 +190,8 @@ export default function MessageInput({
     if (key.backspace) {
       if (cursorPosition > 0) {
         const length = backspaceLength(value.slice(0, cursorPosition));
-        const newValue = value.slice(0, cursorPosition - length) + value.slice(cursorPosition);
-        onChange(newValue);
-        setCursorPosition(prev => prev - length);
+        setValue(value.slice(0, cursorPosition - length) + value.slice(cursorPosition));
+        setCursorPosition(cursorPosition - length);
       }
       setSelectedCommandIndex(0);
       setHistoryIndex(-1);
@@ -202,7 +209,6 @@ export default function MessageInput({
     }
   });
 
-  const displayValue = value || placeholder;
   const isPlaceholder = !value;
 
   return (
@@ -227,8 +233,8 @@ export default function MessageInput({
         </Box>
       </Box>
       {showSlashCommands && (
-        <SlashCommandSuggestions 
-          input={value} 
+        <SlashCommandSuggestions
+          input={value}
           selectedIndex={selectedCommandIndex}
           onSelect={(command: string) => onSubmit('/' + command)}
         />
