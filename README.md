@@ -127,7 +127,7 @@ Priority: `--proxy` > `HTTPS_PROXY` > `HTTP_PROXY`
 ### Available Commands
 - `/help` - Show help and available commands
 - `/login` - Login with your credentials
-- `/model` - Select your Groq model
+- `/model` - Select from the models Groq currently serves, fetched at startup; a saved model that Groq has removed is switched to `openai/gpt-oss-120b`
 - `/clear` - Clear chat history and context
 - `/reasoning` - Toggle display of reasoning content in messages
 - `/effort [value]` - Show or set the reasoning effort sent to models that take one (`/effort auto` stops sending it); saved per model
@@ -149,7 +149,7 @@ Two lines under the input box show the session at a glance:
 
 - Model, with the reasoning effort set by `/effort`
 - Git branch and uncommitted line changes against `HEAD`, when started inside a repository
-- `Ctx`: tokens used by the latest request, with the share of the context window for models listed in `src/utils/models.ts`
+- `Ctx`: tokens used by the latest request, with the share of the context window Groq reports for the model
 - Estimated session cost, for models with prices in `src/utils/models.ts`
 - Session tokens in total ( input / output )
 - Remaining tokens per minute and requests per day, from the rate limit headers of the latest response
@@ -212,7 +212,7 @@ groq-code-cli/
 │       ├── file-ops.ts         # File system operations
 │       ├── local-settings.ts   # Local configuration management
 │       ├── markdown.ts         # Markdown processing utilities
-│       ├── models.ts           # Per-model context window, prices and reasoning efforts
+│       ├── models.ts           # Models from the API, with names, prices and reasoning efforts
 │       ├── proxy-config.ts     # Proxy resolution
 │       ├── replies.ts          # Reply and code block extraction for /copy
 │       ├── status.ts           # Status line data (git, rate limits, formatting)

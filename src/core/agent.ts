@@ -8,7 +8,7 @@ import { ALL_TOOL_SCHEMAS, DANGEROUS_TOOLS, APPROVAL_REQUIRED_TOOLS } from '../t
 import { ConfigManager } from '../utils/local-settings.js';
 import { getProxyAgent, getProxyInfo } from '../utils/proxy-config.js';
 import { parseRateLimit, type RateLimit } from '../utils/status.js';
-import { getEfforts } from '../utils/models.js';
+import { DEFAULT_MODEL, getEfforts, getSelectableModels, isAvailableModel, setLiveModels } from '../utils/models.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -212,6 +212,55 @@ When asked about your identity, you should identify yourself as a coding assista
     debugLog('Groq client initialized with provided API key' + (proxyInfo.enabled ? ' and proxy' : ''));
   }
 
+  // Returns false when no API key is available.
+  private initClient(): boolean {
+    if (this.client) return true;
+    debugLog('Initializing Groq client...');
+    // Try environment variable first
+    const envApiKey = process.env.GROQ_API_KEY;
+    if (envApiKey) {
+      debugLog('Using API key from environment variable');
+      this.setApiKey(envApiKey);
+      return true;
+    }
+    // Try config file
+    debugLog('Environment variable GROQ_API_KEY not found, checking config file');
+    const configApiKey = this.configManager.getApiKey();
+    if (configApiKey) {
+      debugLog('Using API key from config file');
+      this.setApiKey(configApiKey);
+      return true;
+    }
+    debugLog('No API key found anywhere');
+    return false;
+  }
+
+  /**
+   * Fetches the models Groq currently serves and switches away from the current model if it is gone.
+   *
+   * Failures keep the built-in model list, so a missing key or a network error never blocks chatting.
+   *
+   * @returns The model that was replaced, or null when the current model is still available.
+   */
+  public async refreshModels(): Promise<string | null> {
+    if (!this.initClient() || !this.client) return null;
+    try {
+      const response = await this.client.models.list();
+      // The SDK types omit these fields, but the API returns them
+      const models = response.data as Array<{ id: string; active?: boolean; context_window?: number }>;
+      setLiveModels(models.filter(model => model.active !== false).map(model => ({ id: model.id, contextWindow: model.context_window })));
+    } catch (error) {
+      debugLog('Failed to fetch models:', error instanceof Error ? error.message : String(error));
+      return null;
+    }
+    if (isAvailableModel(this.model)) return null;
+    const replaced = this.model;
+    const fallback = isAvailableModel(DEFAULT_MODEL) ? DEFAULT_MODEL : getSelectableModels()[0]?.id;
+    if (!fallback) return null;
+    this.setModel(fallback);
+    return replaced;
+  }
+
   public saveApiKey(apiKey: string): void {
     this.configManager.setApiKey(apiKey);
     this.setApiKey(apiKey);
@@ -294,26 +343,8 @@ When asked about your identity, you should identify yourself as a coding assista
     this.isInterrupted = false;
     
     // Check API key on first message send
-    if (!this.client) {
-      debugLog('Initializing Groq client...');
-      // Try environment variable first
-      const envApiKey = process.env.GROQ_API_KEY;
-      if (envApiKey) {
-        debugLog('Using API key from environment variable');
-        this.setApiKey(envApiKey);
-      } else {
-        // Try config file
-        debugLog('Environment variable GROQ_API_KEY not found, checking config file');
-        const configApiKey = this.configManager.getApiKey();
-        if (configApiKey) {
-          debugLog('Using API key from config file');
-          this.setApiKey(configApiKey);
-        } else {
-          debugLog('No API key found anywhere');
-          throw new Error('No API key available. Please use /login to set your Groq API key.');
-        }
-      }
-      debugLog('Groq client initialized successfully');
+    if (!this.initClient()) {
+      throw new Error('No API key available. Please use /login to set your Groq API key.');
     }
 
     // Add user message
@@ -511,6 +542,9 @@ When asked about your identity, you should identify yourself as a coding assista
                 errorMessage = `API Error (${apiError.status}): ${apiError.error.error.message}`;
                 if (apiError.error.error.code) {
                   errorMessage += ` (Code: ${apiError.error.error.code})`;
+                }
+                if (apiError.error.error.code === 'model_not_found') {
+                  errorMessage += ' Use /model to pick another model.';
                 }
               } else {
                 errorMessage = `API Error (${apiError.status}): ${error.message}`;

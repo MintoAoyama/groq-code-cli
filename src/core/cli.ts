@@ -8,6 +8,7 @@ import App from '../ui/App.js';
 import { getVersion } from '../utils/version.js';
 import { shortenHome } from '../utils/status.js';
 import { renderBanner } from '../ui/banner.js';
+import { DEFAULT_MODEL } from '../utils/models.js';
 
 const program = new Command();
 
@@ -29,8 +30,6 @@ async function startChat(
   debug?: boolean,
   proxy?: string
 ): Promise<void> {
-  let defaultModel = 'moonshotai/kimi-k2-instruct';
-  
   // Validate proxy URL if provided
   if (proxy) {
     try {
@@ -45,7 +44,7 @@ async function startChat(
   
   try {
     // Create agent (API key will be checked on first message)
-    const agent = await Agent.create(defaultModel, temperature, system, debug, proxy);
+    const agent = await Agent.create(DEFAULT_MODEL, temperature, system, debug, proxy);
 
     console.log(renderBanner({
       version: getVersion(),

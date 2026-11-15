@@ -134,6 +134,21 @@ export default function Chat({ agent }: ChatProps) {
     setShowInput(!isProcessing && !pendingApproval && !pendingError && !showLogin && !showModelSelector && !copyPicker);
   }, [isProcessing, pendingApproval, pendingError, showLogin, showModelSelector, copyPicker]);
 
+  const refreshModels = async () => {
+    const replaced = await agent.refreshModels();
+    if (replaced) {
+      setReasoningEffortState(agent.getReasoningEffort());
+      addMessage({
+        role: 'system',
+        content: `${replaced} is no longer available on Groq. Switched to ${agent.getCurrentModel()}.`,
+      });
+    }
+  };
+
+  useEffect(() => {
+    refreshModels();
+  }, []);
+
   const copyChoice = async ({ text, label }: CopyChoice) => {
     setCopyPicker(null);
     const result = await copyToClipboard(text);
@@ -232,6 +247,7 @@ export default function Chat({ agent }: ChatProps) {
       role: 'system',
       content: 'API key saved successfully. You can now start chatting with the assistant.',
     });
+    refreshModels();
   };
 
   const handleLoginCancel = () => {
