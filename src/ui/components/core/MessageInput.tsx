@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text, useInput, usePaste } from 'ink';
 import { MUTED } from '../../theme.js';
 import { getCommandNames } from '../../../commands/index.js';
 import SlashCommandSuggestions from '../input-overlays/SlashCommandSuggestions.js';
+import { PASTE_COLLAPSE_LINES, backspaceLength, expandPastes, lineCountOf, pastePlaceholder } from '../../../utils/paste.js';
 
 interface MessageInputProps {
   value: string;
@@ -23,7 +24,8 @@ export default function MessageInput({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [draftMessage, setDraftMessage] = useState('');
   const [cursorPosition, setCursorPosition] = useState(value.length);
-  
+  const [pastes, setPastes] = useState<Map<number, string>>(new Map());
+
   const isSlashCommand = value.startsWith('/');
   const showSlashCommands = isSlashCommand;
 
@@ -34,13 +36,55 @@ export default function MessageInput({
       // Clear draft and reset history when input is cleared (after sending message)
       setDraftMessage('');
       setHistoryIndex(-1);
+      setPastes(new Map());
     } else if (cursorPosition > value.length) {
       setCursorPosition(value.length);
     }
   }, [value]);
 
+  const insertText = (text: string) => {
+    const newValue = value.slice(0, cursorPosition) + text + value.slice(cursorPosition);
+    onChange(newValue);
+    setCursorPosition(prev => prev + text.length);
+    setSelectedCommandIndex(0);
+    setHistoryIndex(-1);
+  };
+
+  const insertPaste = (text: string) => {
+    const lineCount = lineCountOf(text);
+    if (lineCount < PASTE_COLLAPSE_LINES) {
+      insertText(text);
+      return;
+    }
+    const id = pastes.size + 1;
+    setPastes(prev => new Map(prev).set(id, text));
+    insertText(pastePlaceholder(id, lineCount));
+  };
+
+  const submit = (text: string) => {
+    onSubmit(expandPastes(text, pastes));
+  };
+
+  usePaste(text => insertPaste(text.replace(/\r\n?/g, '\n')));
+
+  const lineStart = value.lastIndexOf('\n', cursorPosition - 1) + 1;
+  const nextNewline = value.indexOf('\n', cursorPosition);
+  const isFirstLine = lineStart === 0;
+  const isLastLine = nextNewline === -1;
+
   useInput((input, key) => {
+    // Shift+Enter is only distinguishable from Enter under the kitty keyboard protocol;
+    // Option+Enter, Ctrl+J and a trailing backslash cover terminals without it.
+    if ((key.return && (key.shift || key.meta)) || (key.ctrl && input === 'j') || input === '\n') {
+      insertText('\n');
+      return;
+    }
+
     if (key.return) {
+      if (value[cursorPosition - 1] === '\\') {
+        onChange(value.slice(0, cursorPosition - 1) + '\n' + value.slice(cursorPosition));
+        return;
+      }
       if (isSlashCommand) {
         // Auto-complete to selected command
         const searchTerm = value.slice(1).toLowerCase();
@@ -53,13 +97,17 @@ export default function MessageInput({
           return;
         }
       }
-      onSubmit(value);
+      submit(value);
       return;
     }
 
     if (key.upArrow) {
       if (showSlashCommands) {
         setSelectedCommandIndex(prev => Math.max(0, prev - 1));
+      } else if (!isFirstLine) {
+        const prevLineStart = value.lastIndexOf('\n', lineStart - 2) + 1;
+        const column = cursorPosition - lineStart;
+        setCursorPosition(Math.min(prevLineStart + column, lineStart - 1));
       } else if (cursorPosition === 0 && userMessageHistory.length > 0) {
         // Store current input as draft when first navigating to history
         if (historyIndex === -1) {
@@ -87,6 +135,11 @@ export default function MessageInput({
           cmd.toLowerCase().includes(searchTerm)
         );
         setSelectedCommandIndex(prev => Math.min(filteredCommands.length - 1, prev + 1));
+      } else if (!isLastLine) {
+        const followingNewline = value.indexOf('\n', nextNewline + 1);
+        const nextLineEnd = followingNewline === -1 ? value.length : followingNewline;
+        const column = cursorPosition - lineStart;
+        setCursorPosition(Math.min(nextNewline + 1 + column, nextLineEnd));
       } else if (cursorPosition === value.length && historyIndex >= 0) {
         // Navigate through message history when at last position
         const newIndex = historyIndex - 1;
@@ -119,9 +172,10 @@ export default function MessageInput({
 
     if (key.backspace || key.delete) {
       if (cursorPosition > 0) {
-        const newValue = value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
+        const length = backspaceLength(value.slice(0, cursorPosition));
+        const newValue = value.slice(0, cursorPosition - length) + value.slice(cursorPosition);
         onChange(newValue);
-        setCursorPosition(prev => prev - 1);
+        setCursorPosition(prev => prev - length);
       }
       setSelectedCommandIndex(0);
       setHistoryIndex(-1);
@@ -135,12 +189,7 @@ export default function MessageInput({
 
     // Regular character input
     if (input && !key.meta && !key.ctrl) {
-      const processedInput = input.replace(/[\r\n]+/g, ' ');
-      const newValue = value.slice(0, cursorPosition) + processedInput + value.slice(cursorPosition);
-      onChange(newValue);
-      setCursorPosition(prev => prev + processedInput.length);
-      setSelectedCommandIndex(0);
-      setHistoryIndex(-1);
+      insertPaste(input.replace(/\r\n?/g, '\n'));
     }
   });
 
@@ -161,9 +210,9 @@ export default function MessageInput({
             <Text color={MUTED}>
               {value.slice(0, cursorPosition)}
               <Text backgroundColor="cyan" color="black">
-                {cursorPosition < value.length ? value[cursorPosition] : ' '}
+                {cursorPosition < value.length && value[cursorPosition] !== '\n' ? value[cursorPosition] : ' '}
               </Text>
-              {value.slice(cursorPosition + 1)}
+              {value[cursorPosition] === '\n' ? value.slice(cursorPosition) : value.slice(cursorPosition + 1)}
             </Text>
           )}
         </Box>
