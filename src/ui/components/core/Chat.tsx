@@ -21,9 +21,10 @@ import { copyToClipboard } from '../../../utils/clipboard.js';
 
 interface ChatProps {
   agent: Agent;
+  initialPrompt?: string;
 }
 
-export default function Chat({ agent }: ChatProps) {
+export default function Chat({ agent, initialPrompt }: ChatProps) {
   const {
     completionTokens,
     startTime,
@@ -146,7 +147,10 @@ export default function Chat({ agent }: ChatProps) {
   };
 
   useEffect(() => {
-    refreshModels();
+    // Wait for the model list so a saved model Groq has removed is replaced before the first request.
+    refreshModels().then(() => {
+      if (initialPrompt) handleSendMessage(initialPrompt);
+    });
   }, []);
 
   const copyChoice = async ({ text, label }: CopyChoice) => {
