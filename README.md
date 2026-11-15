@@ -75,6 +75,10 @@ groq
 
 # Start chat session and send a first message
 groq "explain this repository"
+
+# Answer without the chat UI and print only the reply
+groq -p "explain this repository"
+git diff | groq -p "write a commit message for this diff"
 ```
 
 ### Command Line Options
@@ -86,13 +90,22 @@ Arguments:
   prompt                    Message to send when the chat starts (put -- before one that starts with -)
 
 Options:
+  -p, --print               Answer the prompt without the chat UI, print the reply and exit.
+                            Piped input is appended to the prompt
+  --allow-edits             With --print, let the model create and edit files without asking.
+                            Commands and deletions are always refused
   -t, --temperature <temp>  Temperature for generation (default: 1)
   -s, --system <message>    Custom system message
   -d, --debug               Enable debug logging to debug-agent.log in current directory
-  -p, --proxy <url>         Proxy URL (e.g. http://proxy:8080 or socks5://proxy:1080)
   -h, --help                Display help
   -V, --version             Display version number
 ```
+
+### Headless Mode
+
+`-p` / `--print` runs a single prompt without the chat UI. Only the final reply goes to stdout, so it can be piped; tool calls, intermediate text and errors go to stderr. The exit code is 1 when the request fails or stops at the tool iteration limit.
+
+Tools that need approval in the chat UI are refused, because there is no one to ask. `--allow-edits` lets the model create and edit files; running commands and deleting files are always refused in headless mode.
 
 ### Authentication
 
@@ -125,19 +138,14 @@ Later files take precedence. A `CLAUDE.md` symlinked to `AGENTS.md` is read once
 
 ### Proxy Configuration
 
-Supports HTTP/HTTPS/SOCKS5 proxies via CLI flag or environment variables:
+Supports HTTP/HTTPS/SOCKS5 proxies via environment variables:
 
 ```bash
-# CLI flag (highest priority)
-groq --proxy http://proxy:8080
-groq --proxy socks5://proxy:1080
-
-# Environment variables
 export HTTP_PROXY=http://proxy:8080
 export HTTPS_PROXY=socks5://proxy:1080
 ```
 
-Priority: `--proxy` > `HTTPS_PROXY` > `HTTP_PROXY`
+Priority: `HTTPS_PROXY` > `HTTP_PROXY`
 
 ### Available Commands
 - `/help` - Show help and available commands
@@ -206,7 +214,8 @@ groq-code-cli/
 │   │   └── index.ts            # Command exports
 │   ├── core/               
 │   │   ├── agent.ts            # AI agent implementation
-│   │   └── cli.ts              # CLI entry point and setup
+│   │   ├── cli.ts              # CLI entry point and setup
+│   │   └── headless.ts         # --print mode without the TUI
 │   ├── tools/              
 │   │   ├── tool-schemas.ts     # Tool schema definitions
 │   │   ├── tools.ts            # Tool implementations
