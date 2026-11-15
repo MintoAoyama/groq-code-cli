@@ -26,6 +26,11 @@
       "matchDepTypes": ["dependencies"],
       "matchCurrentValue": "/^[~^]?0\\./",
       "automerge": false
+    },
+    {
+      "description": "Keep Node types at the lowest Node version in engines so APIs newer than that fail type checking; raise this together with engines",
+      "matchPackageNames": ["@types/node"],
+      "allowedVersions": "<23"
     }
   ]
 }
