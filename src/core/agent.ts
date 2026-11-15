@@ -11,6 +11,7 @@ import { parseRateLimit, type RateLimit } from '../utils/status.js';
 import { DEFAULT_MODEL, getEfforts, getSelectableModels, isAvailableModel, setLiveModels } from '../utils/models.js';
 import { formatInstructionMessage, getInstructionDirs, loadInstructionFiles } from '../utils/instructions.js';
 import { TranscriptWriter } from '../utils/transcript.js';
+import { runSessionEndHooks, type SessionEndReason } from '../utils/hooks.js';
 import { getVersion } from '../utils/version.js';
 import fs from 'fs';
 import path from 'path';
@@ -45,6 +46,7 @@ export class Agent {
   private rateLimit?: RateLimit;
   private reasoningEffort: string | null = null;
   private transcript: TranscriptWriter;
+  private endedSessions = new Set<string>();
 
   private constructor(
     model: string,
@@ -287,7 +289,24 @@ When asked about your identity, you should identify yourself as a coding assista
     // Reset messages to only contain system messages
     this.messages = this.messages.filter(msg => msg.role === 'system');
     // Like Claude Code's /clear, the rest of the conversation is a new session.
+    void this.endSession('clear');
     this.transcript = new TranscriptWriter({ version: getVersion() });
+  }
+
+  /**
+   * Runs the SessionEnd hooks for the current session, once per session.
+   */
+  public async endSession(reason: SessionEndReason): Promise<void> {
+    const transcript = this.transcript;
+    if (this.endedSessions.has(transcript.sessionId)) return;
+    this.endedSessions.add(transcript.sessionId);
+    await runSessionEndHooks(this.configManager.getHooks().SessionEnd ?? [], {
+      session_id: transcript.sessionId,
+      transcript_path: transcript.filePath,
+      cwd: transcript.cwd,
+      hook_event_name: 'SessionEnd',
+      reason,
+    });
   }
 
   public setModel(model: string): void {
