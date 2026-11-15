@@ -12,7 +12,7 @@
 	"scripts": {
 		"build": "tsc && node scripts/write-build-info.mjs && chmod +x dist/core/cli.js",
 		"dev": "tsc --watch",
-		"test": "ava"
+		"test": "tsc -p tsconfig.test.json && ava"
 	},
 	"files": [
 		"dist"
@@ -25,9 +25,10 @@
 		"undici": "^8.12.4"
 	},
 	"devDependencies": {
+		"@types/node": "^22.20.5",
 		"@types/react": "^19.1.8",
 		"ava": "^8.0.0",
-		"ts-node": "^10.9.1",
+		"tsx": "^4.23.15",
 		"typescript": "^5.0.3"
 	},
 	"ava": {
@@ -36,7 +37,7 @@
 			"tsx"
 		],
 		"nodeArguments": [
-			"--loader=ts-node/esm"
+			"--import=tsx"
 		],
 		"files": [
 			"test/**/*.test.ts"

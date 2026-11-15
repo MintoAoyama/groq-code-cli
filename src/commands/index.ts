@@ -55,4 +55,4 @@ export function handleSlashCommand(
   }
 }
 
-export { CommandDefinition, CommandContext } from './base.js';
+export type { CommandDefinition, CommandContext } from './base.js';
